@@ -33,7 +33,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// - вернуть сокращенный url с помощью сервиса
-	id := serviceShortener.SaveUrl(string(body))
+	id := serviceShortener.SaveURL(string(body))
 	w.Write([]byte(id))
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -51,7 +51,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/")
 	id, _ = strings.CutSuffix(id, "/")
 	// - получить из сервиса оригинальный url по id
-	url, err := serviceShortener.GetUrlById(id)
+	url, err := serviceShortener.GetURLById(id)
 	if err != nil {
 		http.Error(w, "Not found key", http.StatusBadRequest)
 		return

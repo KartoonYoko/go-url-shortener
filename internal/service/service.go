@@ -27,13 +27,13 @@ func New() *Shortener {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *Shortener) SaveUrl(url string) string {
+func (s *Shortener) SaveURL(url string) string {
 	hash := randStringRunes(5)
 	s.Storage[hash] = url
 	return hash
 }
 
-func (s *Shortener) GetUrlById(id string) (string, error) {
+func (s *Shortener) GetURLById(id string) (string, error) {
 	res := s.Storage[id]
 
 	if res == "" {
