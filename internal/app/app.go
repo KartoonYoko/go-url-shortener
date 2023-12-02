@@ -19,12 +19,6 @@ func post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// - проверить что приходит text/plain (если нет, то вернуть 400)
-	// if !containsRequiredHeader(r, "content-type", []string{"text/plain"}) {
-	// 	http.Error(w, "Request must contains Content-Type header with text/plain value ", http.StatusBadRequest)
-	// 	return
-	// }
-
 	// - получить из тела запроса строку
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -34,9 +28,10 @@ func post(w http.ResponseWriter, r *http.Request) {
 
 	// - вернуть сокращенный url с помощью сервиса
 	id := serviceShortener.SaveURL(string(body))
-	w.Write([]byte(id))
+	
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(id))
 }
 
 // Эндпоинт с методом GET и путём /{id}, где id — идентификатор сокращённого URL (например, /EwHXdJfB).
@@ -59,31 +54,6 @@ func get(w http.ResponseWriter, r *http.Request) {
 
 	// - в случае успеха вернуть 307 и url в заголовке "Location"
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-}
-
-// Проверяет http.Request на наличие заголовка и наличие необходимых значений этого заголовка
-func containsRequiredHeader(r *http.Request, requiredHeader string, requiredValues []string) bool {
-	if len(r.Header) == 0 {
-		return false
-	}
-	values := r.Header.Values(requiredHeader)
-
-	for _, rv := range requiredValues {
-		rv = strings.ToLower(rv)
-		contains := false
-		for _, v := range values {
-			if strings.ToLower(v) == rv {
-				contains = true
-				break
-			}
-		}
-
-		if !contains {
-			return false
-		}
-	}
-
-	return true
 }
 
 func middleware(next http.Handler) http.Handler {
