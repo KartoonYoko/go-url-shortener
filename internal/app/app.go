@@ -20,10 +20,10 @@ func post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// - проверить что приходит text/plain (если нет, то вернуть 400)
-	if !containsRequiredHeader(r, "content-type", []string{"text/plain"}) {
-		http.Error(w, "Request must contains Content-Type header with text/plain value ", http.StatusBadRequest)
-		return
-	}
+	// if !containsRequiredHeader(r, "content-type", []string{"text/plain"}) {
+	// 	http.Error(w, "Request must contains Content-Type header with text/plain value ", http.StatusBadRequest)
+	// 	return
+	// }
 
 	// - получить из тела запроса строку
 	body, err := io.ReadAll(r.Body)
