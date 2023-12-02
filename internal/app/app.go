@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -31,7 +32,8 @@ func post(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(id))
+	res := fmt.Sprintf("http://%s/%s", r.Host, id)
+	w.Write([]byte(res))
 }
 
 // Эндпоинт с методом GET и путём /{id}, где id — идентификатор сокращённого URL (например, /EwHXdJfB).
@@ -56,29 +58,22 @@ func get(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			post(w, r)
-		} else if r.Method == http.MethodGet {
-			get(w, r)
-		} else {
-			http.Error(w, "Method is not allowed", http.StatusBadRequest)
-			return
-		}
-
-		if next == nil {
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func router(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		post(w, r)
+	} else if r.Method == http.MethodGet {
+		get(w, r)
+	} else {
+		http.Error(w, "Method is not allowed", http.StatusBadRequest)
+		return
+	}
 }
 
 func Serve() {
 	mux := http.NewServeMux()
 
-	mux.Handle("/", middleware(nil))
-	err := http.ListenAndServe(":8080", mux)
+	mux.HandleFunc("/", router)
+	err := http.ListenAndServe(`:8080`, mux)
 	if err != nil {
 		panic(err)
 	}
