@@ -51,7 +51,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/")
 	id, _ = strings.CutSuffix(id, "/")
 	// - получить из сервиса оригинальный url по id
-	url, err := serviceShortener.GetURLById(id)
+	url, err := serviceShortener.GetURLByID(id)
 	if err != nil {
 		http.Error(w, "Not found key", http.StatusBadRequest)
 		return

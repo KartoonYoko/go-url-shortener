@@ -33,7 +33,7 @@ func (s *Shortener) SaveURL(url string) string {
 	return hash
 }
 
-func (s *Shortener) GetURLById(id string) (string, error) {
+func (s *Shortener) GetURLByID(id string) (string, error) {
 	res := s.Storage[id]
 
 	if res == "" {
