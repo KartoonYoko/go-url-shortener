@@ -28,7 +28,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 
 	// - вернуть сокращенный url с помощью сервиса
 	id := serviceShortener.SaveURL(string(body))
-	
+
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(id))
