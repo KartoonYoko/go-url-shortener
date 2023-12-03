@@ -6,7 +6,7 @@ import (
 )
 
 func Run() {
-	var serviceShortener *usecase.Shortener = usecase.New()
+	serviceShortener := usecase.New()
 
 	shortenerController := defaulthttp.NewShortenerController(serviceShortener)
 	shortenerController.Serve()

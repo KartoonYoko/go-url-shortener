@@ -106,7 +106,7 @@ func TestGet(t *testing.T) {
 	}
 	// короткие ссылки полученные от сервиса
 	type useCaseURLCheck struct {
-		urlId string
+		urlID string
 		url   string
 	}
 	type testData struct {
@@ -119,7 +119,7 @@ func TestGet(t *testing.T) {
 		{
 			name: "Bad request #1",
 			urlData: useCaseURLCheck{
-				urlId: "urlIdThatNotExists",
+				urlID: "urlIdThatNotExists",
 				url:   "",
 			},
 			want: want{
@@ -129,11 +129,11 @@ func TestGet(t *testing.T) {
 	}
 
 	urlsToCheck := []useCaseURLCheck{
-		{urlId: "", url: "https://pkg.go.dev/regexp#example-Match"},
-		{urlId: "", url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96"},
+		{urlID: "", url: "https://pkg.go.dev/regexp#example-Match"},
+		{urlID: "", url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96"},
 	}
 	for i, urc := range urlsToCheck {
-		urc.urlId = controller.uc.SaveURL(urc.url)
+		urc.urlID = controller.uc.SaveURL(urc.url)
 		tests = append(tests, testData{
 			name:    fmt.Sprintf("Positive request #%d", i),
 			urlData: urc,
@@ -145,10 +145,11 @@ func TestGet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/"+test.urlData.urlId, nil)
+			request := httptest.NewRequest(http.MethodGet, "/"+test.urlData.urlID, nil)
 			w := httptest.NewRecorder()
 			controller.get(w, request)
 			res := w.Result()
+			defer res.Body.Close()
 
 			// проверяем код ответа
 			assert.Equal(t, test.want.code, res.StatusCode)
