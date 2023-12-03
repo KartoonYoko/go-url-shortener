@@ -27,7 +27,7 @@ func NewShortenerController(uc useCase) *shortenerController {
 // и возвращает ответ с кодом 201 и сокращённым URL как text/plain.
 func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Only GET requests are allowed!", http.StatusBadRequest)
+		http.Error(w, "Only POST requests are allowed!", http.StatusBadRequest)
 		return
 	}
 

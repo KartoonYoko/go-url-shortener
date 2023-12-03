@@ -44,19 +44,19 @@ func (s *useCaseMock) randStringRunes(n int) string {
 	return string(b)
 }
 
-var controller *shortenerController
-var uc *useCaseMock
-
-func init() {
+// Метод собирает нужный контроллер, нужно вызывать в каждой функции.
+// Пока непонятно как правильно инициализировать данные, поэтому пока так.
+func createTestMock() *shortenerController {
 	uc := &useCaseMock{
 		r:           rand.New(rand.NewSource(time.Now().UnixMilli())),
 		storage:     make(map[string]string),
 		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	}
-	controller = NewShortenerController(uc)
+	return NewShortenerController(uc)
 }
 
 func TestPost(t *testing.T) {
+	controller := createTestMock()
 	// какой результат хотим получить
 	type want struct {
 		code          int
@@ -81,7 +81,7 @@ func TestPost(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(test.url))
+			request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(test.url))
 			w := httptest.NewRecorder()
 			controller.post(w, request)
 
@@ -89,7 +89,7 @@ func TestPost(t *testing.T) {
 			// проверяем код ответа
 			assert.Equal(t, test.want.code, res.StatusCode)
 			// проверяем тип контента
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
+			assert.Contains(t, res.Header.Get("Content-Type"), test.want.contentType)
 			// получаем и проверяем тело запроса
 			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)
@@ -100,7 +100,7 @@ func TestPost(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	const urlIdThatNotExists = "urlIdThatNotExists"
+	controller := createTestMock()
 	type want struct {
 		code int
 	}
@@ -111,15 +111,15 @@ func TestGet(t *testing.T) {
 	}
 	type testData struct {
 		name    string
-		urlData *useCaseURLCheck
+		urlData useCaseURLCheck
 		want    want
 	}
 
 	tests := []testData{
 		{
 			name: "Bad request #1",
-			urlData: &useCaseURLCheck{
-				urlId: urlIdThatNotExists,
+			urlData: useCaseURLCheck{
+				urlId: "urlIdThatNotExists",
 				url:   "",
 			},
 			want: want{
@@ -129,16 +129,16 @@ func TestGet(t *testing.T) {
 	}
 
 	urlsToCheck := []useCaseURLCheck{
-		{urlId: "Asvw", url: "https://pkg.go.dev/regexp#example-Match"},
-		{urlId: "SAdj9", url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96"},
+		{urlId: "", url: "https://pkg.go.dev/regexp#example-Match"},
+		{urlId: "", url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96"},
 	}
 	for i, urc := range urlsToCheck {
-		uc.storage[urc.urlId] = urc.url
+		urc.urlId = controller.uc.SaveURL(urc.url)
 		tests = append(tests, testData{
 			name:    fmt.Sprintf("Positive request #%d", i),
-			urlData: &urc,
+			urlData: urc,
 			want: want{
-				code: http.StatusCreated,
+				code: http.StatusTemporaryRedirect,
 			},
 		})
 	}
@@ -153,7 +153,7 @@ func TestGet(t *testing.T) {
 			// проверяем код ответа
 			assert.Equal(t, test.want.code, res.StatusCode)
 			// проверяем url
-			assert.Equal(t, res.Header.Get("Location"), test.urlData.url)
+			assert.Equal(t, test.urlData.url, res.Header.Get("Location"))
 		})
 	}
 }
