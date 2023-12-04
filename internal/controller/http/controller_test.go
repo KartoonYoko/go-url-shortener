@@ -1,15 +1,15 @@
-package defaulthttp
+package http
 
 import (
+	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,11 +52,17 @@ func createTestMock() *shortenerController {
 		storage:     make(map[string]string),
 		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	}
-	return NewShortenerController(uc)
+	c := NewShortenerController(uc)
+	return c
 }
 
 func TestPost(t *testing.T) {
 	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+
 	// какой результат хотим получить
 	type want struct {
 		code          int
@@ -79,21 +85,19 @@ func TestPost(t *testing.T) {
 			},
 		},
 	}
+
+	httpClient := resty.New()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(test.url))
-			w := httptest.NewRecorder()
-			controller.post(w, request)
-
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-			// проверяем тип контента
-			assert.Contains(t, res.Header.Get("Content-Type"), test.want.contentType)
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-			resBody, err := io.ReadAll(res.Body)
+			res, err := httpClient.R().SetBody(test.url).Post(srv.URL)
 			require.NoError(t, err)
+			// проверяем код ответа
+			assert.Equal(t, test.want.code, res.StatusCode())
+			// проверяем тип контента
+			assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
+			// получаем и проверяем тело запроса
+			resBody := res.Body()
 			assert.NotRegexpf(t, test.url, resBody, "Body result (%s) is not matched regex (%s)", resBody, test.url)
 		})
 	}
@@ -101,6 +105,11 @@ func TestPost(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+
 	type want struct {
 		code int
 	}
@@ -143,18 +152,32 @@ func TestGet(t *testing.T) {
 		})
 	}
 
+	// создаем HTTP клиент без поддержки редиректов
+	errRedirectBlocked := errors.New("HTTP redirect blocked")
+	redirPolicy := resty.RedirectPolicyFunc(func(_ *http.Request, _ []*http.Request) error {
+		return errRedirectBlocked
+	})
+	httpClient := resty.New().
+		SetBaseURL(srv.URL).
+		SetRedirectPolicy(redirPolicy)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/"+test.urlData.urlID, nil)
-			w := httptest.NewRecorder()
-			controller.get(w, request)
-			res := w.Result()
-			defer res.Body.Close()
+			res, err := httpClient.R().Get(test.urlData.urlID)
+			if !errors.Is(err, errRedirectBlocked) {
+				require.NoError(t, err)
+			}
 
 			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
+			statusErr := assert.Equal(t, test.want.code, res.StatusCode())
 			// проверяем url
-			assert.Equal(t, test.urlData.url, res.Header.Get("Location"))
+			urlErr := assert.Equal(t, test.urlData.url, res.Header().Get("Location"))
+
+			if !statusErr || !urlErr {
+				t.Logf("Requested url: %s", res.Request.URL)
+				t.Logf("Requesst method: %s", res.Request.Method)
+				t.Logf("Body: %s", res.Body())
+			}
 		})
 	}
 }

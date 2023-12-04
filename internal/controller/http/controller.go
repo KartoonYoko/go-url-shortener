@@ -1,10 +1,11 @@
-package defaulthttp
+package http
 
 import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type useCase interface {
@@ -13,13 +14,24 @@ type useCase interface {
 }
 
 type shortenerController struct {
-	uc useCase
+	uc     useCase
+	router *chi.Mux
 }
 
 func NewShortenerController(uc useCase) *shortenerController {
-	return &shortenerController{
+	c := &shortenerController{
 		uc: uc,
 	}
+
+	r := chi.NewRouter()
+	r.Route("/", func(r chi.Router) {
+		r.Get("/{id}", c.get)
+		r.Post("/", c.post)
+	})
+
+	c.router = r
+
+	return c
 }
 
 // Эндпоинт с методом POST и путём /.
@@ -56,12 +68,11 @@ func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// - получить id из строки запроса
-	id := strings.TrimPrefix(r.URL.Path, "/")
-	id, _ = strings.CutSuffix(id, "/")
+	id := chi.URLParam(r, "id")
 	// - получить из сервиса оригинальный url по id
 	url, err := c.uc.GetURLByID(id)
 	if err != nil {
-		http.Error(w, "Not found key", http.StatusBadRequest)
+		http.Error(w, "Url not found", http.StatusBadRequest)
 		return
 	}
 
@@ -69,22 +80,8 @@ func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (c *shortenerController) router(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		c.post(w, r)
-	} else if r.Method == http.MethodGet {
-		c.get(w, r)
-	} else {
-		http.Error(w, "Method is not allowed", http.StatusBadRequest)
-		return
-	}
-}
-
 func (c *shortenerController) Serve() {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/", c.router)
-	err := http.ListenAndServe(`:8080`, mux)
+	err := http.ListenAndServe(`:8080`, c.router)
 	if err != nil {
 		panic(err)
 	}
