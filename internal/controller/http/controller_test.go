@@ -63,7 +63,7 @@ func TestPost(t *testing.T) {
 	srv := httptest.NewServer(controller.router)
 	// останавливаем сервер после завершения теста
 	defer srv.Close()
-	controller.conf.BaseUrlAddress = srv.URL
+	controller.conf.BaseURLAddress = srv.URL
 
 	// какой результат хотим получить
 	type want struct {
@@ -111,7 +111,7 @@ func TestGet(t *testing.T) {
 	srv := httptest.NewServer(controller.router)
 	// останавливаем сервер после завершения теста
 	defer srv.Close()
-	controller.conf.BaseUrlAddress = srv.URL
+	controller.conf.BaseURLAddress = srv.URL
 
 	type want struct {
 		code int

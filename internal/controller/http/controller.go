@@ -58,7 +58,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	res := fmt.Sprintf("http://%s/%s", c.conf.BaseUrlAddress, id)
+	res := fmt.Sprintf("http://%s/%s", c.conf.BaseURLAddress, id)
 	w.Write([]byte(res))
 }
 

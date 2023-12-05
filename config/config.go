@@ -8,7 +8,7 @@ type Config struct {
 	// Адрес запуска сервера
 	BootstrapNetAddress string
 	// Базовый адрес результирующего сокращенного URL
-	BaseUrlAddress string
+	BaseURLAddress string
 }
 
 func New() *Config {
@@ -18,6 +18,6 @@ func New() *Config {
 
 	return &Config{
 		BootstrapNetAddress: *a,
-		BaseUrlAddress:      *b,
+		BaseURLAddress:      *b,
 	}
 }
