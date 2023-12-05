@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/KartoonYoko/go-url-shortener/config"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -16,11 +17,13 @@ type useCase interface {
 type shortenerController struct {
 	uc     useCase
 	router *chi.Mux
+	conf   *config.Config
 }
 
-func NewShortenerController(uc useCase) *shortenerController {
+func NewShortenerController(uc useCase, conf *config.Config) *shortenerController {
 	c := &shortenerController{
-		uc: uc,
+		uc:   uc,
+		conf: conf,
 	}
 
 	r := chi.NewRouter()
@@ -55,7 +58,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	res := fmt.Sprintf("http://%s/%s", r.Host, id)
+	res := fmt.Sprintf("http://%s/%s", c.conf.BaseUrlAddress, id)
 	w.Write([]byte(res))
 }
 
@@ -81,7 +84,7 @@ func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *shortenerController) Serve() {
-	err := http.ListenAndServe(`:8080`, c.router)
+	err := http.ListenAndServe(c.conf.BootstrapNetAddress, c.router)
 	if err != nil {
 		panic(err)
 	}

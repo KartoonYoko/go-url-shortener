@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/KartoonYoko/go-url-shortener/config"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +53,7 @@ func createTestMock() *shortenerController {
 		storage:     make(map[string]string),
 		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	}
-	c := NewShortenerController(uc)
+	c := NewShortenerController(uc, &config.Config{})
 	return c
 }
 
@@ -62,6 +63,7 @@ func TestPost(t *testing.T) {
 	srv := httptest.NewServer(controller.router)
 	// останавливаем сервер после завершения теста
 	defer srv.Close()
+	controller.conf.BaseUrlAddress = srv.URL
 
 	// какой результат хотим получить
 	type want struct {
@@ -109,6 +111,7 @@ func TestGet(t *testing.T) {
 	srv := httptest.NewServer(controller.router)
 	// останавливаем сервер после завершения теста
 	defer srv.Close()
+	controller.conf.BaseUrlAddress = srv.URL
 
 	type want struct {
 		code int
