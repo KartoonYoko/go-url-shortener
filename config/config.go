@@ -23,11 +23,12 @@ func New() *Config {
 	}
 
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
-        c.BootstrapNetAddress = envServerAddr
-    }
+		c.BootstrapNetAddress = envServerAddr
+	}
+
 	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
-        c.BaseURLAddress = envBaseURL
-    }
+		c.BaseURLAddress = envBaseURL
+	}
 
 	return c
 }

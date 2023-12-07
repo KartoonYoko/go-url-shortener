@@ -72,17 +72,28 @@ func TestPost(t *testing.T) {
 		contentType   string
 	}
 
+	// под данную регулярку должны опападать ответы сервера
+	urlRegex := `http:\/\/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{2,5}\/[A-z0-9]+`
 	tests := []struct {
 		name string
 		url  string
 		want want
 	}{
 		{
-			name: "Post test #1",
+			name: "Simple positive request",
 			url:  "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
 			want: want{
 				code:          http.StatusCreated,
-				responseRegex: `http://localhost:8080/[A-z0-9]*`,
+				responseRegex: urlRegex,
+				contentType:   "text/plain",
+			},
+		},
+		{
+			name: "Empty body positive request",
+			url:  "",
+			want: want{
+				code:          http.StatusCreated,
+				responseRegex: urlRegex,
 				contentType:   "text/plain",
 			},
 		},
@@ -100,7 +111,8 @@ func TestPost(t *testing.T) {
 			assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
 			// получаем и проверяем тело запроса
 			resBody := res.Body()
-			assert.NotRegexpf(t, test.url, resBody, "Body result (%s) is not matched regex (%s)", resBody, test.url)
+			body := string(resBody)
+			assert.Regexpf(t, test.want.responseRegex, body, "Body result (%s) is not matched regex (%s)", body, test.want.responseRegex)
 		})
 	}
 }
@@ -147,7 +159,7 @@ func TestGet(t *testing.T) {
 	for i, urc := range urlsToCheck {
 		urc.urlID = controller.uc.SaveURL(urc.url)
 		tests = append(tests, testData{
-			name:    fmt.Sprintf("Positive request #%d", i),
+			name:    fmt.Sprintf("Positive request #%d", i+1),
 			urlData: urc,
 			want: want{
 				code: http.StatusTemporaryRedirect,

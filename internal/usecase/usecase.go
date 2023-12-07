@@ -13,7 +13,7 @@ var ErrNotFoundKey = errors.New("service: key not found")
 // заглушка сервиса для создания коротких адресов
 type Shortener struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - url
-	Storage map[string]string
+	storage map[string]string
 	r       *rand.Rand
 }
 
@@ -21,7 +21,7 @@ func New() *Shortener {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
 	s := make(map[string]string)
 	return &Shortener{
-		Storage: s,
+		storage: s,
 		r:       r,
 	}
 }
@@ -29,12 +29,12 @@ func New() *Shortener {
 // сохранит url и вернёт его id'шник
 func (s *Shortener) SaveURL(url string) string {
 	hash := randStringRunes(5)
-	s.Storage[hash] = url
+	s.storage[hash] = url
 	return hash
 }
 
 func (s *Shortener) GetURLByID(id string) (string, error) {
-	res := s.Storage[id]
+	res := s.storage[id]
 
 	if res == "" {
 		return res, ErrNotFoundKey

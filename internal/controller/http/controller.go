@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
@@ -85,7 +86,7 @@ func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
 
 func (c *shortenerController) Serve() {
 	err := http.ListenAndServe(c.conf.BootstrapNetAddress, c.router)
-	if err != nil {
-		panic(err)
+	if err != http.ErrServerClosed {
+		log.Fatal(err)
 	}
 }
