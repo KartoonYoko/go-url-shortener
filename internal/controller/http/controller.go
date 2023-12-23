@@ -28,6 +28,10 @@ func NewShortenerController(uc useCase, conf *config.Config) *shortenerControlle
 	}
 
 	r := chi.NewRouter()
+
+	r.Use(logRequestTimeMiddleware)
+	r.Use(logResponseInfoMiddleware)
+
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{id}", c.get)
 		r.Post("/", c.post)
@@ -54,6 +58,10 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(body) == 0 {
+		http.Error(w, "Empty body not allowed", http.StatusBadRequest)
+		return
+	}
 	// - вернуть сокращенный url с помощью сервиса
 	id := c.uc.SaveURL(string(body))
 
