@@ -89,10 +89,10 @@ func TestPost(t *testing.T) {
 			},
 		},
 		{
-			name: "Empty body positive request",
+			name: "Empty body request",
 			url:  "",
 			want: want{
-				code:          http.StatusCreated,
+				code:          http.StatusBadRequest,
 				responseRegex: urlRegex,
 				contentType:   "text/plain",
 			},
@@ -109,10 +109,13 @@ func TestPost(t *testing.T) {
 			assert.Equal(t, test.want.code, res.StatusCode())
 			// проверяем тип контента
 			assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
-			// получаем и проверяем тело запроса
-			resBody := res.Body()
-			body := string(resBody)
-			assert.Regexpf(t, test.want.responseRegex, body, "Body result (%s) is not matched regex (%s)", body, test.want.responseRegex)
+
+			if test.want.code == http.StatusCreated {
+				// получаем и проверяем тело запроса
+				resBody := res.Body()
+				body := string(resBody)
+				assert.Regexpf(t, test.want.responseRegex, body, "Body result (%s) is not matched regex (%s)", body, test.want.responseRegex)
+			}
 		})
 	}
 }
