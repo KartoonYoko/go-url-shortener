@@ -148,7 +148,7 @@ func TestPostAPIShorten(t *testing.T) {
 		{
 			name: "Simple positive request",
 			request: model.CreateShortenURLRequest{
-				Url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
+				URL: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
 			},
 			want: want{
 				code:          http.StatusCreated,
@@ -159,7 +159,7 @@ func TestPostAPIShorten(t *testing.T) {
 		{
 			name: "Empty body request",
 			request: model.CreateShortenURLRequest{
-				Url: "",
+				URL: "",
 			},
 			want: want{
 				code:          http.StatusBadRequest,

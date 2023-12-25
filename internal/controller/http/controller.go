@@ -107,12 +107,12 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if request.Url == "" {
+	if request.URL == "" {
 		http.Error(w, "Empty body URL", http.StatusBadRequest)
 		return
 	}
 
-	id := c.uc.SaveURL(string(request.Url))
+	id := c.uc.SaveURL(string(request.URL))
 
 	response := model.CreateShortenURLResponse{
 		Result: fmt.Sprintf("%s/%s", c.conf.BaseURLAddress, id),
