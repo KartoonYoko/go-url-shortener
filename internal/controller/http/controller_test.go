@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
+	"github.com/KartoonYoko/go-url-shortener/internal/model"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,7 +74,7 @@ func TestPost(t *testing.T) {
 		contentType   string
 	}
 
-	// под данную регулярку должны опападать ответы сервера
+	// под данную регулярку должны попадать ответы сервера
 	urlRegex := `http:\/\/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{2,5}\/[A-z0-9]+`
 	tests := []struct {
 		name string
@@ -115,6 +117,74 @@ func TestPost(t *testing.T) {
 				resBody := res.Body()
 				body := string(resBody)
 				assert.Regexpf(t, test.want.responseRegex, body, "Body result (%s) is not matched regex (%s)", body, test.want.responseRegex)
+			}
+		})
+	}
+}
+
+func TestPostAPIShorten(t *testing.T) {
+	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+	apiRoute := "/api/shorten"
+
+	// какой результат хотим получить
+	type want struct {
+		code          int
+		responseRegex string
+		contentType   string
+	}
+
+	// под данную регулярку должны опападать ответы сервера
+	urlRegex := `http:\/\/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{2,5}\/[A-z0-9]+`
+	tests := []struct {
+		name    string
+		request model.CreateShortenURLRequest
+		want    want
+	}{
+		{
+			name: "Simple positive request",
+			request: model.CreateShortenURLRequest{
+				Url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
+			},
+			want: want{
+				code:          http.StatusCreated,
+				responseRegex: urlRegex,
+				contentType:   "application/json",
+			},
+		},
+		{
+			name: "Empty body request",
+			request: model.CreateShortenURLRequest{
+				Url: "",
+			},
+			want: want{
+				code:          http.StatusBadRequest,
+				responseRegex: urlRegex,
+				contentType:   "text/plain",
+			},
+		},
+	}
+
+	httpClient := resty.New()
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := httpClient.R().SetBody(test.request).Post(srv.URL + apiRoute)
+			require.NoError(t, err)
+			// проверяем код ответа
+			assert.Equal(t, test.want.code, res.StatusCode())
+			// проверяем тип контента
+			assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
+
+			if test.want.code == http.StatusCreated {
+				// получаем и проверяем тело запроса
+				var response model.CreateShortenURLResponse
+				json.Unmarshal(res.Body(), &response)
+				assert.Regexpf(t, test.want.responseRegex, response.Result, "Body result (%s) is not matched regex (%s)", response.Result, test.want.responseRegex)
 			}
 		})
 	}
