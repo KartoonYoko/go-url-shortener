@@ -32,6 +32,8 @@ func NewShortenerController(uc useCase, conf *config.Config) *shortenerControlle
 	r := chi.NewRouter()
 
 	r.Use(logRequestTimeMiddleware)
+	r.Use(decompressRequestGZIPMiddleware)
+	r.Use(compressResponseGZIPMiddleware)
 	r.Use(logResponseInfoMiddleware)
 
 	r.Route("/", func(r chi.Router) {
