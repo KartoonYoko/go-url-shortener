@@ -60,6 +60,10 @@ func (c *compressWriter) Header() http.Header {
 	return c.rw.Header()
 }
 
+func (c *compressWriter) Close() error {
+    return c.cw.Close()
+}
+
 func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		supportsGzip := false
@@ -81,7 +85,7 @@ func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
 			io.WriteString(w, err.Error())
 			return
 		}
-		defer rw.cw.Close()
+		defer rw.Close()
 		next.ServeHTTP(rw, r)
 	})
 }
