@@ -10,9 +10,10 @@ import (
 )
 
 type compressWriter struct {
-	rw                    http.ResponseWriter // обычный writer
+	rw                    http.ResponseWriter // обычный writer для http ответа
 	cw                    io.WriteCloser      // writer для сжатия
 	contentTypeToCompress []string            // значения заголовка Content-Type, при которых необходимо сжимать данные
+	shouldCompress        bool                // нужно ли сжимать данные
 }
 
 func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
@@ -25,10 +26,21 @@ func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
 		rw:                    w,
 		cw:                    cw,
 		contentTypeToCompress: []string{"application/json", "text/html"},
+		shouldCompress:        true,
 	}, nil
 }
 
 func (c *compressWriter) Write(b []byte) (int, error) {
+	logger.Log.Sugar().Infoln("compress body by gzip")
+
+	if c.shouldCompress {
+		return c.cw.Write(b)
+	}
+
+	return c.rw.Write(b)
+}
+
+func (c *compressWriter) WriteHeader(statusCode int) {
 	shouldCompress := false
 	for _, v := range c.rw.Header().Values("content-type") {
 		if shouldCompress {
@@ -41,18 +53,12 @@ func (c *compressWriter) Write(b []byte) (int, error) {
 			}
 		}
 	}
+	c.shouldCompress = shouldCompress
 
-	logger.Log.Sugar().Infoln("compressed", "gzip")
-
-	if shouldCompress {
+	if c.shouldCompress {
 		c.rw.Header().Set("Content-Encoding", "gzip")
-		return c.cw.Write(b)
 	}
 
-	return c.rw.Write(b)
-}
-
-func (c *compressWriter) WriteHeader(statusCode int) {
 	c.rw.WriteHeader(statusCode)
 }
 
@@ -61,7 +67,11 @@ func (c *compressWriter) Header() http.Header {
 }
 
 func (c *compressWriter) Close() error {
-    return c.cw.Close()
+	if c.shouldCompress {
+		return c.cw.Close()
+	}
+
+	return nil
 }
 
 func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
