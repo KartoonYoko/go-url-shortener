@@ -22,6 +22,8 @@ func Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer repo.Close()
+
 	serviceShortener := usecase.New(repo)
 	shortenerController := http.NewShortenerController(serviceShortener, conf)
 	shortenerController.Serve()

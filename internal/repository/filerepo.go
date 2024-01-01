@@ -54,8 +54,8 @@ func NewFileRepo(fileName string) (*FileRepo, error) {
 func (s *FileRepo) SaveURL(url string) (string, error) {
 	hash := randStringRunes(5)
 	record := recordShorURL{
-		Uuid: strconv.FormatInt(int64(s.lastUUID+1), 10),
-		ShortURL: hash,
+		Uuid:        strconv.FormatInt(int64(s.lastUUID+1), 10),
+		ShortURL:    hash,
 		OriginalURL: url,
 	}
 	err := s.saveToFile(record)
@@ -63,6 +63,7 @@ func (s *FileRepo) SaveURL(url string) (string, error) {
 		return "", err
 	}
 
+	s.lastUUID++
 	s.storage[hash] = url
 	return hash, nil
 }
@@ -75,6 +76,10 @@ func (s *FileRepo) GetURLByID(id string) (string, error) {
 	}
 
 	return res, nil
+}
+
+func (s *FileRepo) Close() error {
+	return s.file.Close()
 }
 
 func (s *FileRepo) loadAllData() error {
@@ -122,6 +127,9 @@ func (s *FileRepo) saveToFile(r recordShorURL) error {
 	if err != nil {
 		return err
 	}
+
+	// добавляем перенос строки
+	data = append(data, '\n')
 
 	_, err = s.file.Write(data)
 	return err
