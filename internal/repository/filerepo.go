@@ -12,7 +12,7 @@ import (
 
 // строка записи в файле
 type recordShorURL struct {
-	Uuid        string `json:"uuid"`
+	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
@@ -54,7 +54,7 @@ func NewFileRepo(fileName string) (*FileRepo, error) {
 func (s *FileRepo) SaveURL(url string) (string, error) {
 	hash := randStringRunes(5)
 	record := recordShorURL{
-		Uuid:        strconv.FormatInt(int64(s.lastUUID+1), 10),
+		UUID:        strconv.FormatInt(int64(s.lastUUID+1), 10),
 		ShortURL:    hash,
 		OriginalURL: url,
 	}
@@ -110,7 +110,7 @@ func (s *FileRepo) loadAllData() error {
 		}
 
 		s.storage[record.ShortURL] = record.OriginalURL
-		parsed, err := strconv.ParseInt(record.Uuid, 10, 32)
+		parsed, err := strconv.ParseInt(record.UUID, 10, 32)
 		if err != nil {
 			return err
 		}
