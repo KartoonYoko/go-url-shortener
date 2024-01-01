@@ -23,10 +23,10 @@ type useCaseMock struct {
 	letterRunes []rune
 }
 
-func (s *useCaseMock) SaveURL(url string) string {
+func (s *useCaseMock) SaveURL(url string) (string, error) {
 	hash := s.randStringRunes(5)
 	s.storage[hash] = url
-	return hash
+	return hash, nil
 }
 
 func (s *useCaseMock) GetURLByID(id string) (string, error) {
@@ -230,7 +230,7 @@ func TestGet(t *testing.T) {
 		{urlID: "", url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96"},
 	}
 	for i, urc := range urlsToCheck {
-		urc.urlID = controller.uc.SaveURL(urc.url)
+		urc.urlID, _ = controller.uc.SaveURL(urc.url)
 		tests = append(tests, testData{
 			name:    fmt.Sprintf("Positive request #%d", i+1),
 			urlData: urc,

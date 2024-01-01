@@ -14,7 +14,7 @@ import (
 
 type useCase interface {
 	GetURLByID(id string) (string, error)
-	SaveURL(url string) string
+	SaveURL(url string) (string, error)
 }
 
 type shortenerController struct {
@@ -73,7 +73,11 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// - вернуть сокращенный url с помощью сервиса
-	id := c.uc.SaveURL(string(body))
+	id, err := c.uc.SaveURL(string(body))
+	if err != nil {
+		http.Error(w, "Server error", http.StatusBadRequest)
+		return
+	}
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -114,7 +118,11 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	id := c.uc.SaveURL(string(request.URL))
+	id, err := c.uc.SaveURL(string(request.URL))
+	if err != nil {
+		http.Error(w, "Server error", http.StatusBadRequest)
+		return
+	}
 
 	response := model.CreateShortenURLResponse{
 		Result: fmt.Sprintf("%s/%s", c.conf.BaseURLAddress, id),
