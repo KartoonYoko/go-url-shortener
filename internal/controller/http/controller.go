@@ -127,7 +127,7 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 	response := model.CreateShortenURLResponse{
 		Result: fmt.Sprintf("%s/%s", c.conf.BaseURLAddress, id),
 	}
-	res, err := json.Marshal(&response)
+	res, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, "Can not serialize response", http.StatusInternalServerError)
 		return
