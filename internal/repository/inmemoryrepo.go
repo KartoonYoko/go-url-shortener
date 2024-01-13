@@ -1,39 +1,36 @@
-package usecase
+package repository
 
 import (
-	"errors"
 	"math/rand"
 	"time"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-var ErrNotFoundKey = errors.New("service: key not found")
-
-// заглушка сервиса для создания коротких адресов
-type Shortener struct {
+// хранилище коротки адресов в памяти
+type InMemoryRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - url
 	storage map[string]string
 	r       *rand.Rand
 }
 
-func New() *Shortener {
+func NewInMemoryRepo() *InMemoryRepo {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
 	s := make(map[string]string)
-	return &Shortener{
+	return &InMemoryRepo{
 		storage: s,
 		r:       r,
 	}
 }
 
 // сохранит url и вернёт его id'шник
-func (s *Shortener) SaveURL(url string) string {
+func (s *InMemoryRepo) SaveURL(url string) string {
 	hash := randStringRunes(5)
 	s.storage[hash] = url
 	return hash
 }
 
-func (s *Shortener) GetURLByID(id string) (string, error) {
+func (s *InMemoryRepo) GetURLByID(id string) (string, error) {
 	res := s.storage[id]
 
 	if res == "" {
