@@ -1,30 +1,44 @@
 package app
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
 	"github.com/KartoonYoko/go-url-shortener/internal/controller/http"
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
-	"github.com/KartoonYoko/go-url-shortener/internal/repository"
-	"github.com/KartoonYoko/go-url-shortener/internal/usecase"
+	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
+	usecasePinger "github.com/KartoonYoko/go-url-shortener/internal/usecase/ping"
+	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func Run() {
+	// logger
 	if err := logger.Initialize("Info"); err != nil {
 		log.Fatal(err)
 	}
 	defer logger.Log.Sync()
-
 	conf := config.New()
 
-	repo, err := repository.NewFileRepo(conf.FileStoragePath)
+	// репозитории
+	db, err := sql.Open("pgx", conf.DatabaseDsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	repo, err := repository.NewPsgsqlRepo(db)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer repo.Close()
 
-	serviceShortener := usecase.New(repo)
-	shortenerController := http.NewShortenerController(serviceShortener, conf)
+	// usecase'ы
+	serviceShortener := usecaseShortener.New(repo)
+	servicePinger := usecasePinger.NewPingUseCase(repo)
+
+	// контроллеры
+	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, conf)
+
 	shortenerController.Serve()
 }

@@ -55,7 +55,7 @@ func createTestMock() *shortenerController {
 		storage:     make(map[string]string),
 		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	}
-	c := NewShortenerController(uc, &config.Config{})
+	c := NewShortenerController(uc, nil, &config.Config{})
 	return c
 }
 

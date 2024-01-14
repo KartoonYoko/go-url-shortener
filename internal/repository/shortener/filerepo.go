@@ -17,7 +17,7 @@ type recordShorURL struct {
 	OriginalURL string `json:"original_url"`
 }
 
-type FileRepo struct {
+type fileRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - url
 	storage  map[string]string
 	r        *rand.Rand
@@ -26,11 +26,11 @@ type FileRepo struct {
 	file     *os.File
 }
 
-func NewFileRepo(fileName string) (*FileRepo, error) {
+func NewFileRepo(fileName string) (*fileRepo, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
 	s := make(map[string]string)
 
-	repo := &FileRepo{
+	repo := &fileRepo{
 		storage:  s,
 		r:        r,
 		lastUUID: 0,
@@ -51,7 +51,7 @@ func NewFileRepo(fileName string) (*FileRepo, error) {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *FileRepo) SaveURL(url string) (string, error) {
+func (s *fileRepo) SaveURL(url string) (string, error) {
 	hash := randStringRunes(5)
 	record := recordShorURL{
 		UUID:        strconv.FormatInt(int64(s.lastUUID+1), 10),
@@ -68,7 +68,7 @@ func (s *FileRepo) SaveURL(url string) (string, error) {
 	return hash, nil
 }
 
-func (s *FileRepo) GetURLByID(id string) (string, error) {
+func (s *fileRepo) GetURLByID(id string) (string, error) {
 	res := s.storage[id]
 
 	if res == "" {
@@ -78,11 +78,15 @@ func (s *FileRepo) GetURLByID(id string) (string, error) {
 	return res, nil
 }
 
-func (s *FileRepo) Close() error {
+func (s *fileRepo) Close() error {
 	return s.file.Close()
 }
 
-func (s *FileRepo) loadAllData() error {
+func (s *fileRepo) Ping() error {
+	return nil
+}
+
+func (s *fileRepo) loadAllData() error {
 	if s.filename == "" {
 		return nil
 	}
@@ -122,7 +126,7 @@ func (s *FileRepo) loadAllData() error {
 	return nil
 }
 
-func (s *FileRepo) saveToFile(r recordShorURL) error {
+func (s *fileRepo) saveToFile(r recordShorURL) error {
 	data, err := json.Marshal(r)
 	if err != nil {
 		return err
