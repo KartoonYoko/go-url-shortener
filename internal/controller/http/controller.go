@@ -41,39 +41,31 @@ func NewShortenerController(uc useCaseShortener, ucPing useCasePinger,
 	r.Use(logResponseInfoMiddleware)
 
 	// routes
-	// root
-	{
-		rootRouter := chi.NewRouter()
-		rootRouter.Route("/", func(r chi.Router) {
-			r.Get("/{id}", c.get)
-			r.Post("/", c.post)
-		})
-
-		r.Mount("/", rootRouter)
-	}
-
-	// api
-	{
-		apiRouter := chi.NewRouter()
-		apiRouter.Route("/", func(r chi.Router) {
-			r.Post("/shorten", c.postCreateShorten)
-		})
-
-		r.Mount("/api", apiRouter)
-	}
-
-	// ping
-	{
-		pingRouter := chi.NewRouter()
-		pingRouter.Route("/", func(r chi.Router) {
-			r.Get("/", c.ping)
-		})
-
-		r.Mount("/ping", pingRouter)
-	}
+	routeRoot(r, c)
+	routeAPI(r, c)
+	routePing(r, c)
 
 	c.router = r
 	return c
+}
+
+func routeRoot(r *chi.Mux, c *shortenerController) {
+	r.Get("/{id}", c.get)
+	r.Post("/", c.post)
+}
+
+func routeAPI(r *chi.Mux, c *shortenerController) {
+	apiRouter := chi.NewRouter()
+	apiRouter.Post("/shorten", c.postCreateShorten)
+
+	r.Mount("/api", apiRouter)
+}
+
+func routePing(r *chi.Mux, c *shortenerController) {
+	pingRouter := chi.NewRouter()
+	pingRouter.Get("/", c.ping)
+
+	r.Mount("/ping", pingRouter)
 }
 
 func (c *shortenerController) Serve() {

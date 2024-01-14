@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/model"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 // Эндпоинт с методом POST и путём /.

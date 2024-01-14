@@ -32,9 +32,14 @@ func Run() {
 		log.Fatal(err)
 	}
 	defer repo.Close()
+	fileRepo, err := repository.NewFileRepo(conf.FileStoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fileRepo.Close()
 
 	// usecase'ы
-	serviceShortener := usecaseShortener.New(repo)
+	serviceShortener := usecaseShortener.New(fileRepo)
 	servicePinger := usecasePinger.NewPingUseCase(repo)
 
 	// контроллеры
