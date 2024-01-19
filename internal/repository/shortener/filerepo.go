@@ -1,7 +1,8 @@
-package repository
+package shortener
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"io"
 	"math/rand"
@@ -82,7 +83,7 @@ func (s *fileRepo) Close() error {
 	return s.file.Close()
 }
 
-func (s *fileRepo) Ping() error {
+func (s *fileRepo) Ping(ctx context.Context) error {
 	return nil
 }
 

@@ -1,29 +1,44 @@
-package repository
+package shortener
 
 import (
 	"context"
-	"database/sql"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type psgsqlRepo struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
-func NewPsgsqlRepo(db *sql.DB) (*psgsqlRepo, error) {
-	return &psgsqlRepo{
+func NewPsgsqlRepo(ctx context.Context, db *pgxpool.Pool) (*psgsqlRepo, error) {
+	repo := &psgsqlRepo{
 		db: db,
-	}, nil
+	}
+	err := repo.createSchema(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	return repo, nil
+}
+
+func (s *psgsqlRepo) createSchema(ctx context.Context, db *pgxpool.Pool) error {
+	schema := `CREATE TABLE IF NOT EXISTS shorten_url (
+		url VARCHAR,
+		short_index VARCHAR
+	)`
+
+	_, err := db.Exec(ctx, schema)
+
+	return err
 }
 
 // сохранит url и вернёт его id'шник
-func (s *psgsqlRepo) SaveURL(url string) (string, error) {
-
+func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
+	s.db.Exec(ctx, "INSERT INTO shorten_url (url, short_index) VALUES($1, $2)")
 	return "", nil
 }
 
-func (s *psgsqlRepo) GetURLByID(id string) (string, error) {
+func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	return "", nil
 }
 
@@ -33,5 +48,5 @@ func (s *psgsqlRepo) Close() error {
 }
 
 func (s *psgsqlRepo) Ping(ctx context.Context) error {
-	return s.db.PingContext(ctx)
+	return s.db.Ping(ctx)
 }

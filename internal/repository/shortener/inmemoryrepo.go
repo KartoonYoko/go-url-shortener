@@ -1,11 +1,10 @@
-package repository
+package shortener
 
 import (
+	"context"
 	"math/rand"
 	"time"
 )
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 // хранилище коротки адресов в памяти
 type inMemoryRepo struct {
@@ -24,10 +23,10 @@ func NewInMemoryRepo() *inMemoryRepo {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *inMemoryRepo) SaveURL(url string) string {
+func (s *inMemoryRepo) SaveURL(url string) (string, error) {
 	hash := randStringRunes(5)
 	s.storage[hash] = url
-	return hash
+	return hash, nil
 }
 
 func (s *inMemoryRepo) GetURLByID(id string) (string, error) {
@@ -40,14 +39,10 @@ func (s *inMemoryRepo) GetURLByID(id string) (string, error) {
 	return res, nil
 }
 
-func (s *inMemoryRepo) Ping() error {
+func (s *inMemoryRepo) Ping(ctx context.Context) error {
 	return nil
 }
 
-func randStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
+func (s *inMemoryRepo) Close() error {
+	return nil
 }

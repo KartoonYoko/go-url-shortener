@@ -1,8 +1,10 @@
 package shortener
 
+import "context"
+
 type ShortenerRepo interface {
-	SaveURL(url string) (string, error)
-	GetURLByID(id string) (string, error)
+	SaveURL(ctx context.Context, url string) (string, error)
+	GetURLByID(ctx context.Context, id string) (string, error)
 }
 
 type shortenerUsecase struct {
@@ -16,10 +18,10 @@ func New(repo ShortenerRepo) *shortenerUsecase {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *shortenerUsecase) SaveURL(url string) (string, error) {
-	return s.repository.SaveURL(url)
+func (s *shortenerUsecase) SaveURL(ctx context.Context, url string) (string, error) {
+	return s.repository.SaveURL(ctx, url)
 }
 
-func (s *shortenerUsecase) GetURLByID(id string) (string, error) {
-	return s.repository.GetURLByID(id)
+func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, error) {
+	return s.repository.GetURLByID(ctx, id)
 }

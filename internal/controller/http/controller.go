@@ -10,8 +10,8 @@ import (
 )
 
 type useCaseShortener interface {
-	GetURLByID(id string) (string, error)
-	SaveURL(url string) (string, error)
+	GetURLByID(ctx context.Context, id string) (string, error)
+	SaveURL(ctx context.Context, url string) (string, error)
 }
 
 type useCasePinger interface {
