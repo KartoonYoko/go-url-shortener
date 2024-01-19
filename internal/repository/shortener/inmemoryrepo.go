@@ -23,13 +23,13 @@ func NewInMemoryRepo() *inMemoryRepo {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *inMemoryRepo) SaveURL(url string) (string, error) {
+func (s *inMemoryRepo) SaveURL(ctx context.Context, url string) (string, error) {
 	hash := randStringRunes(5)
 	s.storage[hash] = url
 	return hash, nil
 }
 
-func (s *inMemoryRepo) GetURLByID(id string) (string, error) {
+func (s *inMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	res := s.storage[id]
 
 	if res == "" {

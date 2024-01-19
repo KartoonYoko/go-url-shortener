@@ -52,7 +52,7 @@ func NewFileRepo(fileName string) (*fileRepo, error) {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *fileRepo) SaveURL(url string) (string, error) {
+func (s *fileRepo) SaveURL(ctx context.Context, url string) (string, error) {
 	hash := randStringRunes(5)
 	record := recordShorURL{
 		UUID:        strconv.FormatInt(int64(s.lastUUID+1), 10),
@@ -69,7 +69,7 @@ func (s *fileRepo) SaveURL(url string) (string, error) {
 	return hash, nil
 }
 
-func (s *fileRepo) GetURLByID(id string) (string, error) {
+func (s *fileRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	res := s.storage[id]
 
 	if res == "" {
