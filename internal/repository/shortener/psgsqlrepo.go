@@ -24,7 +24,7 @@ func NewPsgsqlRepo(ctx context.Context, db *pgxpool.Pool) (*psgsqlRepo, error) {
 func (s *psgsqlRepo) createSchema(ctx context.Context, db *pgxpool.Pool) error {
 	schema := `CREATE TABLE IF NOT EXISTS shorten_url (
 		url VARCHAR,
-		short_index VARCHAR
+		id VARCHAR
 	)`
 
 	_, err := db.Exec(ctx, schema)
@@ -34,12 +34,23 @@ func (s *psgsqlRepo) createSchema(ctx context.Context, db *pgxpool.Pool) error {
 
 // сохранит url и вернёт его id'шник
 func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
-	s.db.Exec(ctx, "INSERT INTO shorten_url (url, short_index) VALUES($1, $2)")
-	return "", nil
+	hash := randStringRunes(5)
+	_, err := s.db.Exec(ctx, "INSERT INTO shorten_url (url, id) VALUES($1, $2)", url, hash)
+	if err != nil {
+		return "", err
+	}
+
+	return hash, nil
 }
 
 func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) {
-	return "", nil
+	row := s.db.QueryRow(ctx, "SELECT url FROM shorten_url WHERE id=$1", id)
+	var url string
+	err := row.Scan(&url)
+	if err != nil {
+		return "", err
+	}
+	return url, nil
 }
 
 func (s *psgsqlRepo) Close() error {

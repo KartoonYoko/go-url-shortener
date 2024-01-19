@@ -63,12 +63,14 @@ func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, err
 		return repo, nil
 	}
 
-	fileRepo, err := repository.NewFileRepo(conf.FileStoragePath)
-	if err == nil {
+	if conf.FileStoragePath != "" {
+		fileRepo, err := repository.NewFileRepo(conf.FileStoragePath)
+		if err != nil {
+			return nil, err
+		}
+
 		return fileRepo, nil
 	}
 
-	inMemoryRepo := repository.NewInMemoryRepo()
-	
-	return inMemoryRepo, nil
+	return repository.NewInMemoryRepo(), nil
 }
