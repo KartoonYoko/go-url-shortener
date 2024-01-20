@@ -20,8 +20,6 @@ func New() *Config {
 	a := flag.String("a", ":8080", "Flag responsible for http server start")
 	b := flag.String("b", "http://localhost:8080", "Flag responsible for base addres of shorted url")
 	f := flag.String("f", "", "Path of short url's file")
-	// defaultConnectionString := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-	// 	`localhost`, `postgres`, `123`, `postgres`, 5433)
 	dbDsn := flag.String("d", "", "Database connection string")
 	flag.Parse()
 

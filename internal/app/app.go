@@ -12,7 +12,8 @@ import (
 	usecasePinger "github.com/KartoonYoko/go-url-shortener/internal/usecase/ping"
 	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 type ShortenerRepoCloser interface {
@@ -50,7 +51,7 @@ func Run() {
 
 func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, error) {
 	if conf.DatabaseDsn != "" {
-		db, err := pgxpool.New(ctx, conf.DatabaseDsn)
+		db, err := sqlx.Connect("pgx", conf.DatabaseDsn)
 		if err != nil {
 			return nil, err
 		}
