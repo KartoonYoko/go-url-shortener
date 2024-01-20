@@ -40,7 +40,7 @@ func Run() {
 	defer repo.Close()
 
 	// usecase'ы
-	serviceShortener := usecaseShortener.New(repo)
+	serviceShortener := usecaseShortener.New(repo, conf.BaseURLAddress)
 	servicePinger := usecasePinger.NewPingUseCase(repo)
 
 	// контроллеры

@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -33,7 +32,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// - вернуть сокращенный url с помощью сервиса
-	id, err := c.uc.SaveURL(ctx, string(body))
+	url, err := c.uc.SaveURL(ctx, string(body))
 	if err != nil {
 		http.Error(w, "Server error", http.StatusBadRequest)
 		return
@@ -41,8 +40,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	res := fmt.Sprintf("%s/%s", c.conf.BaseURLAddress, id)
-	w.Write([]byte(res))
+	w.Write([]byte(url))
 }
 
 // Эндпоинт с методом GET и путём /{id}, где id — идентификатор сокращённого URL (например, /EwHXdJfB).
@@ -82,14 +80,14 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	id, err := c.uc.SaveURL(ctx, string(request.URL))
+	url, err := c.uc.SaveURL(ctx, string(request.URL))
 	if err != nil {
 		http.Error(w, "Server error", http.StatusBadRequest)
 		return
 	}
 
 	response := model.CreateShortenURLResponse{
-		Result: fmt.Sprintf("%s/%s", c.conf.BaseURLAddress, id),
+		Result: url,
 	}
 	res, err := json.Marshal(response)
 	if err != nil {

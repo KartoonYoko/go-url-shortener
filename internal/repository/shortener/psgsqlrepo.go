@@ -66,12 +66,12 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 
 	// запомним несуществующие URL'ы
 	notExistsURLs := make([]string, len(batch))
-	for _, v := range batch {
+	for i, v := range batch {
 		if _, ok := existsURLs[v.OriginalURL]; ok {
 			continue
 		}
 
-		notExistsURLs = append(notExistsURLs, v.OriginalURL)
+		notExistsURLs[i] = v.OriginalURL
 	}
 
 	// добавим в БД несуществующие
@@ -115,11 +115,11 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		}
 
 		// соберём ответы для каждого сorrelationID
-		for _, сorrelationID := range сorrelationIDs {
-			response = append(response, model.CreateShortenURLBatchItemResponse{
+		for i, сorrelationID := range сorrelationIDs {
+			response[i] = model.CreateShortenURLBatchItemResponse{
 				ShortURL:      id,
 				CorrelationID: сorrelationID,
-			})
+			}
 		}
 	}
 
@@ -164,8 +164,8 @@ func (s *psgsqlRepo) getMapedExistsURLs(ctx context.Context,
 	batch []model.CreateShortenURLBatchItemRequest) (map[string]string, error) {
 	// подготовим запрос для нахождения всех URL'ов
 	requestURLs := make([]string, len(batch))
-	for _, v := range batch {
-		requestURLs = append(requestURLs, v.OriginalURL)
+	for i, v := range batch {
+		requestURLs[i] = v.OriginalURL
 	}
 	query, args, err := sqlx.In(`SELECT * FROM shorten_url WHERE url IN (?)`, requestURLs)
 	if err != nil {

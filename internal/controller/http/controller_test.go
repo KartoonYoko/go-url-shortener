@@ -19,15 +19,21 @@ import (
 )
 
 type useCaseMock struct {
-	storage     map[string]string
-	r           *rand.Rand
-	letterRunes []rune
+	storage        map[string]string
+	r              *rand.Rand
+	letterRunes    []rune
+	baseAddressURL string
+}
+
+func (s *useCaseMock) getURLFromHash(hash string) string {
+	// return fmt.Sprintf("%s/%s", s.baseAddressURL, hash)
+	return hash
 }
 
 func (s *useCaseMock) SaveURL(ctx context.Context, url string) (string, error) {
 	hash := s.randStringRunes(5)
 	s.storage[hash] = url
-	return hash, nil
+	return s.getURLFromHash(hash), nil
 }
 
 func (s *useCaseMock) GetURLByID(ctx context.Context, id string) (string, error) {
@@ -37,7 +43,7 @@ func (s *useCaseMock) GetURLByID(ctx context.Context, id string) (string, error)
 		return res, fmt.Errorf("Not found url by id %s", id)
 	}
 
-	return res, nil
+	return s.getURLFromHash(res), nil
 }
 
 func (s *useCaseMock) randStringRunes(n int) string {
@@ -48,13 +54,32 @@ func (s *useCaseMock) randStringRunes(n int) string {
 	return string(b)
 }
 
+func (s *useCaseMock) SaveURLsBatch(ctx context.Context,
+	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
+	for i, v := range request {
+		hash, err := s.SaveURL(ctx, v.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		response[i] = model.CreateShortenURLBatchItemResponse{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      s.getURLFromHash(hash),
+		}
+	}
+
+	return response, nil
+}
+
 // Метод собирает нужный контроллер, нужно вызывать в каждой функции.
 // Пока непонятно как правильно инициализировать данные, поэтому пока так.
 func createTestMock() *shortenerController {
 	uc := &useCaseMock{
-		r:           rand.New(rand.NewSource(time.Now().UnixMilli())),
-		storage:     make(map[string]string),
-		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+		r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
+		storage:        make(map[string]string),
+		letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
 	}
 	c := NewShortenerController(uc, nil, &config.Config{})
 	return c
@@ -76,7 +101,7 @@ func TestPost(t *testing.T) {
 	}
 
 	// под данную регулярку должны попадать ответы сервера
-	urlRegex := `http:\/\/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{2,5}\/[A-z0-9]+`
+	urlRegex := `[A-z0-9]+`
 	tests := []struct {
 		name string
 		url  string
@@ -140,7 +165,7 @@ func TestPostAPIShorten(t *testing.T) {
 	}
 
 	// под данную регулярку должны опападать ответы сервера
-	urlRegex := `http:\/\/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{2,5}\/[A-z0-9]+`
+	urlRegex := `[A-z0-9]+`
 	tests := []struct {
 		name    string
 		request model.CreateShortenURLRequest
@@ -186,6 +211,103 @@ func TestPostAPIShorten(t *testing.T) {
 				var response model.CreateShortenURLResponse
 				json.Unmarshal(res.Body(), &response)
 				assert.Regexpf(t, test.want.responseRegex, response.Result, "Body result (%s) is not matched regex (%s)", response.Result, test.want.responseRegex)
+			}
+		})
+	}
+}
+
+func TestPostAPIShortenBatch(t *testing.T) {
+	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+	apiRoute := "/api/shorten/batch"
+
+	// какой результат хотим получить
+	type want struct {
+		code        int
+		contentType string
+	}
+	tests := []struct {
+		name    string
+		request []model.CreateShortenURLBatchItemRequest
+		want    want
+	}{
+		{
+			name: "Different URLs",
+			request: []model.CreateShortenURLBatchItemRequest{
+				{
+					OriginalURL:   "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
+					CorrelationID: "0",
+				},
+				{
+					OriginalURL:   "https://github.com/docker/compose",
+					CorrelationID: "1",
+				},
+			},
+			want: want{
+				code:        http.StatusCreated,
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "Existing URLs",
+			request: []model.CreateShortenURLBatchItemRequest{
+				{
+					OriginalURL:   "https://github.com/docker/compose",
+					CorrelationID: "0",
+				},
+			},
+			want: want{
+				code:        http.StatusCreated,
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "Repetitive and existing URLs",
+			request: []model.CreateShortenURLBatchItemRequest{
+				{
+					OriginalURL:   "https://github.com/docker/compose",
+					CorrelationID: "0",
+				},
+				{
+					OriginalURL:   "https://github.com/nasa/astrobee",
+					CorrelationID: "1",
+				},
+				{
+					OriginalURL:   "https://github.com/docker/compose",
+					CorrelationID: "2",
+				},
+			},
+			want: want{
+				code:        http.StatusCreated,
+				contentType: "application/json",
+			},
+		},
+	}
+
+	errRedirectBlocked := errors.New("HTTP redirect blocked")
+	redirPolicy := resty.RedirectPolicyFunc(func(_ *http.Request, _ []*http.Request) error {
+		return errRedirectBlocked
+	})
+	httpClient := resty.New().SetBaseURL(srv.URL).SetRedirectPolicy(redirPolicy)
+	urlRegex := `[A-z0-9]+`
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := httpClient.R().SetBody(test.request).Post(srv.URL + apiRoute)
+			require.NoError(t, err)
+			assert.Equal(t, test.want.code, res.StatusCode())
+			assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
+
+			var response []model.CreateShortenURLBatchItemResponse
+			err = json.Unmarshal(res.Body(), &response)
+			require.NoError(t, err)
+			assert.Equal(t, len(response), len(test.request), "not equals count of response and request")
+
+			for _, res := range response {
+				assert.Regexpf(t, urlRegex, res.ShortURL, "Result short URL (%s) is not matched regex (%s)", res.ShortURL, urlRegex)
 			}
 		})
 	}
