@@ -6,12 +6,15 @@ import (
 	"net/http"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
+	"github.com/KartoonYoko/go-url-shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 )
 
 type useCaseShortener interface {
 	GetURLByID(ctx context.Context, id string) (string, error)
 	SaveURL(ctx context.Context, url string) (string, error)
+	SaveURLsBatch(ctx context.Context,
+		request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error)
 }
 
 type useCasePinger interface {
@@ -57,6 +60,7 @@ func routeRoot(r *chi.Mux, c *shortenerController) {
 func routeAPI(r *chi.Mux, c *shortenerController) {
 	apiRouter := chi.NewRouter()
 	apiRouter.Post("/shorten", c.postCreateShorten)
+	apiRouter.Post("/shorten/batch", c.postCreateShortenBatch)
 
 	r.Mount("/api", apiRouter)
 }

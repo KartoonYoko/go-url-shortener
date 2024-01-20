@@ -101,3 +101,27 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(res))
 }
+
+func (c *shortenerController) postCreateShortenBatch(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
+	var request []model.CreateShortenURLBatchItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Can not parse body", http.StatusBadRequest)
+		return
+	}
+
+	response, err := c.uc.SaveURLsBatch(ctx, request)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+	responseJSON, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Can not serialize response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(responseJSON))
+}
