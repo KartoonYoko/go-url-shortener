@@ -1,6 +1,8 @@
 package shortener
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 

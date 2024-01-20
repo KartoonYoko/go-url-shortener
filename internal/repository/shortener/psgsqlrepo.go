@@ -3,6 +3,8 @@ package shortener
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
+	"encoding/base64"
 	"errors"
 	"strconv"
 
@@ -38,15 +40,38 @@ func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
 		id VARCHAR PRIMARY KEY,
 		url VARCHAR
 	)`)
-	tx.ExecContext(ctx, "CREATE UNIQUE INDEX url_idx ON shorten_url (url)")
+	// tx.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
+	tx.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
 
 	return tx.Commit()
 }
 
 // сохранит url и вернёт его id'шник
 func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
-	hash := randStringRunes(5)
-	_, err := s.conn.ExecContext(ctx, "INSERT INTO shorten_url (url, id) VALUES($1, $2)", url, hash)
+	// проверим сущестует ли в базе уже такой URL
+	row := s.conn.QueryRowContext(ctx, "SELECT id, url FROM shorten_url WHERE url=$1", url)
+	var id, dbURL string
+	err := row.Err()
+	if err != nil {
+		return "", err
+	}
+	err = row.Scan(&id, &dbURL)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+	if id != "" {
+		return id, nil
+	}
+
+	// генерируем новый URL, если такой уже есть
+	h := sha256.New()
+	// сгенерируем уникальный ID для URL'a
+	_, err = h.Write([]byte(url))
+	if err != nil {
+		return "", err
+	}
+	hash := base64.URLEncoding.EncodeToString(h.Sum(nil)[:5])
+	_, err = s.conn.ExecContext(ctx, "INSERT INTO shorten_url (url, id) VALUES($1, $2)", url, hash)
 	if err != nil {
 		return "", err
 	}
@@ -65,13 +90,13 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 	}
 
 	// запомним несуществующие URL'ы
-	notExistsURLs := make([]string, len(batch))
-	for i, v := range batch {
+	notExistsURLs := make([]string, 0, len(batch))
+	for _, v := range batch {
 		if _, ok := existsURLs[v.OriginalURL]; ok {
 			continue
 		}
 
-		notExistsURLs[i] = v.OriginalURL
+		notExistsURLs = append(notExistsURLs, v.OriginalURL)
 	}
 
 	// добавим в БД несуществующие
@@ -88,7 +113,7 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		id := string(h.Sum(nil))
+		id := base64.URLEncoding.EncodeToString(h.Sum(nil)[:5])
 
 		mapToInsert = append(mapToInsert, map[string]interface{}{
 			"id":  id,
@@ -98,13 +123,15 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		// запомним сгенерированный url для ответа и чтобы больше не генерировать ID
 		existsURLs[url] = id
 	}
-	_, err = s.conn.NamedExec(`INSERT INTO shorten_url (id, url) VALUES(:id, :url)`, mapToInsert)
-	if err != nil {
-		return nil, err
+	if len(mapToInsert) > 0 {
+		_, err = s.conn.NamedExec(`INSERT INTO shorten_url (id, url) VALUES(:id, :url)`, mapToInsert)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// соберём ответ
-	response := make([]model.CreateShortenURLBatchItemResponse, len(existsURLs))
+	response := make([]model.CreateShortenURLBatchItemResponse, 0, len(existsURLs))
 	for url, id := range existsURLs {
 		// найдём все CorrelationID с данным URL'ом
 		сorrelationIDs := []string{}
@@ -115,11 +142,11 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		}
 
 		// соберём ответы для каждого сorrelationID
-		for i, сorrelationID := range сorrelationIDs {
-			response[i] = model.CreateShortenURLBatchItemResponse{
+		for _, сorrelationID := range сorrelationIDs {
+			response = append(response, model.CreateShortenURLBatchItemResponse{
 				ShortURL:      id,
 				CorrelationID: сorrelationID,
-			}
+			})
 		}
 	}
 
@@ -163,9 +190,9 @@ func (s *psgsqlRepo) Ping(ctx context.Context) error {
 func (s *psgsqlRepo) getMapedExistsURLs(ctx context.Context,
 	batch []model.CreateShortenURLBatchItemRequest) (map[string]string, error) {
 	// подготовим запрос для нахождения всех URL'ов
-	requestURLs := make([]string, len(batch))
-	for i, v := range batch {
-		requestURLs[i] = v.OriginalURL
+	requestURLs := make([]string, 0, len(batch))
+	for _, v := range batch {
+		requestURLs = append(requestURLs, v.OriginalURL)
 	}
 	query, args, err := sqlx.In(`SELECT * FROM shorten_url WHERE url IN (?)`, requestURLs)
 	if err != nil {
@@ -188,7 +215,7 @@ func (s *psgsqlRepo) getMapedExistsURLs(ctx context.Context,
 			return nil, err
 		}
 
-		existsURLs[id] = url
+		existsURLs[url] = id
 	}
 	err = rows.Err()
 	if err != nil {

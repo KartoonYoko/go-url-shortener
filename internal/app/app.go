@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 
@@ -27,7 +28,7 @@ func Run() {
 
 	// логгер
 	if err := logger.Initialize("Info"); err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("logger init error: %w", err))
 	}
 	defer logger.Log.Sync()
 	conf := config.New()
@@ -35,7 +36,7 @@ func Run() {
 	// репозитории
 	repo, err := initRepo(ctx, *conf)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("repository init error: %w", err))
 	}
 	defer repo.Close()
 

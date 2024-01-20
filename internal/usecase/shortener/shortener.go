@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	"go.uber.org/zap"
 )
 
 type ShortenerRepo interface {
@@ -30,6 +32,7 @@ func New(repo ShortenerRepo, baseURLAddress string) *shortenerUsecase {
 func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string) (string, error) {
 	hash, err := s.repository.SaveURL(ctx, hash)
 	if err != nil {
+		logger.Log.Error("save url error", zap.Error(err))
 		return "", err
 	}
 
@@ -37,22 +40,24 @@ func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string) (string, er
 }
 
 func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, error) {
-	hash, err := s.repository.GetURLByID(ctx, id)
+	url, err := s.repository.GetURLByID(ctx, id)
 	if err != nil {
+		logger.Log.Error("get url error", zap.Error(err))
 		return "", err
 	}
-	return s.getShorURL(hash), nil
+	return url, nil
 }
 
 func (s *shortenerUsecase) SaveURLsBatch(ctx context.Context,
 	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response, err := s.repository.SaveURLsBatch(ctx, request)
 	if err != nil {
+		logger.Log.Error("save urls batch error", zap.Error(err))
 		return nil, err
 	}
 
-	for _, v := range response {
-		v.ShortURL = s.getShorURL(v.ShortURL)
+	for i := range response {
+		response[i].ShortURL = s.getShorURL(response[i].ShortURL)
 	}
 	return response, nil
 }
