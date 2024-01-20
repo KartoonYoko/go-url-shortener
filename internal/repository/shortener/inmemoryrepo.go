@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/rand"
 	"time"
+
+	"github.com/KartoonYoko/go-url-shortener/internal/model"
 )
 
 // хранилище коротки адресов в памяти
@@ -41,6 +43,24 @@ func (s *inMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error
 
 func (s *inMemoryRepo) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (s *inMemoryRepo) SaveURLsBatch(ctx context.Context,
+	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
+	for _, v := range request {
+		hash, err := s.SaveURL(ctx, v.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		response = append(response, model.CreateShortenURLBatchItemResponse{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      hash,
+		})
+	}
+
+	return response, nil
 }
 
 func (s *inMemoryRepo) Close() error {

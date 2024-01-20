@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/KartoonYoko/go-url-shortener/internal/model"
 )
 
 // строка записи в файле
@@ -85,6 +87,24 @@ func (s *fileRepo) Close() error {
 
 func (s *fileRepo) Ping(ctx context.Context) error {
 	return nil
+}
+
+func (s *fileRepo) SaveURLsBatch(ctx context.Context,
+	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
+	for _, v := range request {
+		hash, err := s.SaveURL(ctx, v.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		response = append(response, model.CreateShortenURLBatchItemResponse{
+			CorrelationID: v.CorrelationID,
+			ShortURL: hash,
+		})
+	}
+
+	return response, nil
 }
 
 func (s *fileRepo) loadAllData() error {
