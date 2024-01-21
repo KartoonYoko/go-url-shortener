@@ -36,7 +36,7 @@ func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string) (string, er
 	if err != nil {
 		var repoErrURLAlreadyExists *repository.URLAlreadyExistsError
 		if errors.As(err, &repoErrURLAlreadyExists) {
-			return "", NewURLAlreadyExistsError(repoErrURLAlreadyExists.ID, repoErrURLAlreadyExists.URL, err)
+			return "", NewURLAlreadyExistsError(s.getShorURL(repoErrURLAlreadyExists.ID), repoErrURLAlreadyExists.URL, err)
 		}
 		logger.Log.Error("save url error", zap.Error(err))
 		return "", err

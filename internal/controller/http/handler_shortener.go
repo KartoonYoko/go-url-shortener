@@ -40,7 +40,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 		if errors.As(err, &alreadyExistsErr) {
 			w.Header().Set("content-type", "text/plain")
 			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(alreadyExistsErr.URL))
+			w.Write([]byte(alreadyExistsErr.ShortURL))
 			return
 		}
 		http.Error(w, "Server error", http.StatusBadRequest)
@@ -94,7 +94,7 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 		var alreadyExistsErr *usecaseShortener.URLAlreadyExistsError
 		if errors.As(err, &alreadyExistsErr) {
 			res, err := json.Marshal(model.CreateShortenURLResponse{
-				Result: alreadyExistsErr.URL,
+				Result: alreadyExistsErr.ShortURL,
 			})
 
 			if err != nil {
