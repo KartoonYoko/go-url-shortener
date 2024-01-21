@@ -3,13 +3,14 @@ package shortener
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base64"
 	"errors"
 	"strconv"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
@@ -40,32 +41,17 @@ func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
 		id VARCHAR PRIMARY KEY,
 		url VARCHAR
 	)`)
-	// tx.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
-	tx.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
+	tx.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
 
 	return tx.Commit()
 }
 
 // сохранит url и вернёт его id'шник
 func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
-	// проверим сущестует ли в базе уже такой URL
-	row := s.conn.QueryRowContext(ctx, "SELECT id, url FROM shorten_url WHERE url=$1", url)
-	var id, dbURL string
-	err := row.Err()
-	if err != nil {
-		return "", err
-	}
-	err = row.Scan(&id, &dbURL)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", err
-	}
-	if id != "" {
-		return id, nil
-	}
-
 	// генерируем новый URL, если такой уже есть
 	h := sha256.New()
 	// сгенерируем уникальный ID для URL'a
+	var err error
 	_, err = h.Write([]byte(url))
 	if err != nil {
 		return "", err
@@ -73,6 +59,24 @@ func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
 	hash := base64.URLEncoding.EncodeToString(h.Sum(nil)[:5])
 	_, err = s.conn.ExecContext(ctx, "INSERT INTO shorten_url (url, id) VALUES($1, $2)", url, hash)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		// если вставка не удалась по причине, что уже существует такой URL в БД,
+		// то делаем ещё один запрос для определения существующего ID
+		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+			row := s.conn.QueryRowContext(ctx, "SELECT id FROM shorten_url WHERE url=$1", url)
+			err = row.Err()
+			if err != nil {
+				return "", err
+			}
+			err = row.Scan(&hash)
+			if err != nil {
+				return "", err
+			}
+
+			err = NewURLAlreadyExistsError(hash, url)
+			return hash, err
+		}
+
 		return "", err
 	}
 

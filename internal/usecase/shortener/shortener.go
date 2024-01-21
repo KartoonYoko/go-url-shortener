@@ -2,10 +2,12 @@ package shortener
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
 	"go.uber.org/zap"
 )
 
@@ -32,6 +34,10 @@ func New(repo ShortenerRepo, baseURLAddress string) *shortenerUsecase {
 func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string) (string, error) {
 	hash, err := s.repository.SaveURL(ctx, hash)
 	if err != nil {
+		var repoErrURLAlreadyExists *repository.URLAlreadyExistsError
+		if errors.As(err, &repoErrURLAlreadyExists) {
+			return "", NewURLAlreadyExistsError(repoErrURLAlreadyExists.ID, repoErrURLAlreadyExists.URL, err)
+		}
 		logger.Log.Error("save url error", zap.Error(err))
 		return "", err
 	}

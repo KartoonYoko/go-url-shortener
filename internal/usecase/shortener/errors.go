@@ -1,18 +1,14 @@
 package shortener
 
-import (
-	"errors"
-	"fmt"
-)
-
-var ErrNotFoundKey = errors.New("service: key not found")
+import "fmt"
 
 type URLAlreadyExistsError struct {
 	URL string // URL, который уже существует в базе
 	ID  string // ID url'a
+	Err error
 }
 
-func NewURLAlreadyExistsError(id string, url string) *URLAlreadyExistsError {
+func NewURLAlreadyExistsError(id string, url string, err error) *URLAlreadyExistsError {
 	return &URLAlreadyExistsError{
 		URL: url,
 		ID:  id,
@@ -21,4 +17,8 @@ func NewURLAlreadyExistsError(id string, url string) *URLAlreadyExistsError {
 
 func (e *URLAlreadyExistsError) Error() string {
 	return fmt.Sprintf("url %s already exists", e.URL)
+}
+
+func (e *URLAlreadyExistsError) Unwrap() error {
+	return e.Err
 }

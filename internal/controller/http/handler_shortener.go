@@ -3,10 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -34,6 +36,13 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 	// - вернуть сокращенный url с помощью сервиса
 	url, err := c.uc.SaveURL(ctx, string(body))
 	if err != nil {
+		var alreadyExistsErr *usecaseShortener.URLAlreadyExistsError
+		if errors.As(err, &alreadyExistsErr) {
+			w.Header().Set("content-type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(alreadyExistsErr.URL))
+			return
+		}
 		http.Error(w, "Server error", http.StatusBadRequest)
 		return
 	}
@@ -82,6 +91,22 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 
 	url, err := c.uc.SaveURL(ctx, string(request.URL))
 	if err != nil {
+		var alreadyExistsErr *usecaseShortener.URLAlreadyExistsError
+		if errors.As(err, &alreadyExistsErr) {
+			res, err := json.Marshal(model.CreateShortenURLResponse{
+				Result: alreadyExistsErr.URL,
+			})
+
+			if err != nil {
+				http.Error(w, "Can not serialize response", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("content-type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(res))
+			return
+		}
 		http.Error(w, "Server error", http.StatusBadRequest)
 		return
 	}
