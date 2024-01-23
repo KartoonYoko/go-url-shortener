@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -16,7 +15,7 @@ import (
 // Сервер принимает в теле запроса строку URL как text/plain
 // и возвращает ответ с кодом 201 и сокращённым URL как text/plain.
 func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST requests are allowed!", http.StatusBadRequest)
 		return
@@ -55,7 +54,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 // Эндпоинт с методом GET и путём /{id}, где id — идентификатор сокращённого URL (например, /EwHXdJfB).
 // В случае успешной обработки запроса сервер возвращает ответ с кодом 307 и оригинальным URL в HTTP-заголовке Location.
 func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET requests are allowed!", http.StatusBadRequest)
@@ -76,7 +75,7 @@ func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 
 	var request model.CreateShortenURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -126,7 +125,7 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 }
 
 func (c *shortenerController) postCreateShortenBatch(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	var request []model.CreateShortenURLBatchItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Can not parse body", http.StatusBadRequest)
