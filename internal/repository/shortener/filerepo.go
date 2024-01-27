@@ -1,13 +1,16 @@
-package repository
+package shortener
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"io"
 	"math/rand"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/KartoonYoko/go-url-shortener/internal/model"
 )
 
 // строка записи в файле
@@ -17,7 +20,7 @@ type recordShorURL struct {
 	OriginalURL string `json:"original_url"`
 }
 
-type FileRepo struct {
+type fileRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - url
 	storage  map[string]string
 	r        *rand.Rand
@@ -26,11 +29,11 @@ type FileRepo struct {
 	file     *os.File
 }
 
-func NewFileRepo(fileName string) (*FileRepo, error) {
+func NewFileRepo(fileName string) (*fileRepo, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
 	s := make(map[string]string)
 
-	repo := &FileRepo{
+	repo := &fileRepo{
 		storage:  s,
 		r:        r,
 		lastUUID: 0,
@@ -51,7 +54,7 @@ func NewFileRepo(fileName string) (*FileRepo, error) {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *FileRepo) SaveURL(url string) (string, error) {
+func (s *fileRepo) SaveURL(ctx context.Context, url string) (string, error) {
 	hash := randStringRunes(5)
 	record := recordShorURL{
 		UUID:        strconv.FormatInt(int64(s.lastUUID+1), 10),
@@ -68,7 +71,7 @@ func (s *FileRepo) SaveURL(url string) (string, error) {
 	return hash, nil
 }
 
-func (s *FileRepo) GetURLByID(id string) (string, error) {
+func (s *fileRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	res := s.storage[id]
 
 	if res == "" {
@@ -78,11 +81,33 @@ func (s *FileRepo) GetURLByID(id string) (string, error) {
 	return res, nil
 }
 
-func (s *FileRepo) Close() error {
+func (s *fileRepo) Close() error {
 	return s.file.Close()
 }
 
-func (s *FileRepo) loadAllData() error {
+func (s *fileRepo) Ping(ctx context.Context) error {
+	return nil
+}
+
+func (s *fileRepo) SaveURLsBatch(ctx context.Context,
+	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
+	for _, v := range request {
+		hash, err := s.SaveURL(ctx, v.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
+		response = append(response, model.CreateShortenURLBatchItemResponse{
+			CorrelationID: v.CorrelationID,
+			ShortURL: hash,
+		})
+	}
+
+	return response, nil
+}
+
+func (s *fileRepo) loadAllData() error {
 	if s.filename == "" {
 		return nil
 	}
@@ -122,7 +147,7 @@ func (s *FileRepo) loadAllData() error {
 	return nil
 }
 
-func (s *FileRepo) saveToFile(r recordShorURL) error {
+func (s *fileRepo) saveToFile(r recordShorURL) error {
 	data, err := json.Marshal(r)
 	if err != nil {
 		return err
