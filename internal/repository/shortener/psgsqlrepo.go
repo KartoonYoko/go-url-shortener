@@ -3,12 +3,12 @@ package shortener
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"strconv"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
@@ -37,26 +37,47 @@ func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
 	}
 	defer tx.Rollback()
 
+	// таблица URL'ов
 	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten_url (
 		id VARCHAR PRIMARY KEY,
 		url VARCHAR
 	)`)
 	tx.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
 
+	// таблица пользователей
+	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users (
+		id VARCHAR PRIMARY KEY
+	)`)
+
+	// таблица пользователей/URL'ов
+	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users_shorten_url (
+		user_id VARCHAR,
+		url_id VARCHAR,
+
+		PRIMARY KEY(user_id, url_id),
+
+		CONSTRAINT fk_user_id
+		FOREIGN KEY (user_id) 
+		REFERENCES users (id),
+
+		CONSTRAINT fk_url_id
+		FOREIGN KEY (url_id) 
+		REFERENCES shorten_url (id)
+	)`)
+
 	return tx.Commit()
 }
 
 // сохранит url и вернёт его id'шник
-func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
-	// генерируем новый URL, если такой уже есть
-	h := sha256.New()
+func (s *psgsqlRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
 	// сгенерируем уникальный ID для URL'a
+	h := sha256.New()
 	var err error
-	_, err = h.Write([]byte(url))
+	hash, err := generateURLUniqueHash(h, url)
 	if err != nil {
 		return "", err
 	}
-	hash := base64.URLEncoding.EncodeToString(h.Sum(nil)[:5])
+
 	_, err = s.conn.ExecContext(ctx, "INSERT INTO shorten_url (url, id) VALUES($1, $2)", url, hash)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -73,6 +94,11 @@ func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
 				return "", err
 			}
 
+			err = s.insertUserIDAndHash(ctx, userID, hash)
+			if err != nil {
+				return "", err
+			}
+
 			err = NewURLAlreadyExistsError(hash, url)
 			return hash, err
 		}
@@ -80,11 +106,17 @@ func (s *psgsqlRepo) SaveURL(ctx context.Context, url string) (string, error) {
 		return "", err
 	}
 
+	err = s.insertUserIDAndHash(ctx, userID, hash)
+	if err != nil {
+		return "", err
+	}
+
 	return hash, nil
 }
 
+// SaveURLsBatch выполняет множественную вставку
 func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
-	batch []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	batch []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	// проверим какие URL'ы существуют;
 	// все существующие URL'ы добавим в словарь,
 	// где ключ - URL, значение - ID;
@@ -111,13 +143,11 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		if _, ok := existsURLs[url]; ok {
 			continue
 		}
-		h.Reset()
-		// сгенерируем уникальный ID для URL'a
-		_, err := h.Write([]byte(url))
+
+		id, err := generateURLUniqueHash(h, url)
 		if err != nil {
 			return nil, err
 		}
-		id := base64.URLEncoding.EncodeToString(h.Sum(nil)[:5])
 
 		mapToInsert = append(mapToInsert, map[string]interface{}{
 			"id":  id,
@@ -132,6 +162,12 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// сохраним информацию о пользователе
+	err = s.insertUserIDAndHashes(ctx, userID, notExistsURLs)
+	if err != nil {
+		return nil, err
 	}
 
 	// соберём ответ
@@ -180,6 +216,34 @@ func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) 
 	return url, nil
 }
 
+// GetUserURLs вернёт все когда-либо сокращенные URL'ы пользователем
+func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
+	type GetModel struct {
+		url_id string
+		url    string
+	}
+	models := []GetModel{}
+	err := s.conn.Select(&models, `
+	SELECT * FROM users_shorten_url 
+	LEFT JOIN shorten_url ON shorten_url.id=users_shorten_url.url_id
+	WHERE user_id=$1
+	`, userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]model.GetUserURLsItemResponse, 0, len(models))
+	for _, v := range models {
+		response = append(response, model.GetUserURLsItemResponse{
+			ShortURL:    v.url_id,
+			OriginalURL: v.url,
+		})
+	}
+
+	return response, nil
+}
+
 func (s *psgsqlRepo) Close() error {
 	s.conn.Close()
 	return nil
@@ -187,6 +251,78 @@ func (s *psgsqlRepo) Close() error {
 
 func (s *psgsqlRepo) Ping(ctx context.Context) error {
 	return s.conn.PingContext(ctx)
+}
+
+func (s *psgsqlRepo) GetNewUserID(ctx context.Context) (string, error) {
+	id := uuid.New()
+	return id.String(), nil
+}
+
+// insertUserIDAndHash вставляет запись о пользователе и URL'е в таблицу, если записи нет
+func (s *psgsqlRepo) insertUserIDAndHash(ctx context.Context, userID string, hash string) error {
+	_, err := s.conn.ExecContext(ctx, "INSERT INTO users_shorten_url (user_id, url_id) VALUES($1, $2)", userID, hash)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+			// если уже существует, то добавлять не нужно
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+// insertUserIDAndHashes вставляет записи о пользователе и URL'ах в таблицу, если записей нет
+func (s *psgsqlRepo) insertUserIDAndHashes(ctx context.Context, userID string, hashes []string) error {
+	// получение только тех записей, которые ещё не существуют в БД
+	rows, err := s.conn.QueryContext(ctx, `SELECT url_id FROM users_shorten_url WHERE user_id=$1`, userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	existsUserHashes := make(map[string]struct{})
+	for rows.Next() {
+		var urlID string
+		err := rows.Scan(&urlID)
+		if err != nil {
+			return err
+		}
+		existsUserHashes[urlID] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	type insertUserURLModel struct {
+		user_id string
+		url_id  string
+	}
+	hashesToInsert := make([]insertUserURLModel, 0, len(hashes))
+	for _, urlID := range hashes {
+		if _, ok := existsUserHashes[urlID]; ok {
+			continue
+		}
+
+		hashesToInsert = append(hashesToInsert, insertUserURLModel{
+			user_id: userID,
+			url_id:  urlID,
+		})
+	}
+	if len(hashesToInsert) == 0 {
+		return nil
+	}
+
+	_, err = s.conn.NamedExec(`INSERT INTO users_shorten_url (user_id, url_id) 
+		VALUES (:user_id, :url_id)`, hashesToInsert)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // getMapedExistsURLs вернёт существующие URL'ы в виде словаря,

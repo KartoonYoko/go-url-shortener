@@ -5,12 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"math/rand"
 	"os"
 	"strconv"
-	"time"
 
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 )
 
 // строка записи в файле
@@ -18,26 +16,22 @@ type recordShorURL struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	// UserID      string `json:"user_id"`
 }
 
 type fileRepo struct {
-	// хранилище адресов и их id'шников; ключ - id, значение - url
-	storage  map[string]string
-	r        *rand.Rand
-	lastUUID int
-	filename string
-	file     *os.File
+	// хранилище адресов и их id'шников; ключ - id, значение - данные
+	repo         inMemoryRepo
+	lineLastUUID int
+	filename     string
+	file         *os.File
 }
 
 func NewFileRepo(fileName string) (*fileRepo, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
-	s := make(map[string]string)
-
 	repo := &fileRepo{
-		storage:  s,
-		r:        r,
-		lastUUID: 0,
-		filename: fileName,
+		repo:         *NewInMemoryRepo(),
+		lineLastUUID: 0,
+		filename:     fileName,
 	}
 
 	err := repo.loadAllData()
@@ -54,57 +48,63 @@ func NewFileRepo(fileName string) (*fileRepo, error) {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *fileRepo) SaveURL(ctx context.Context, url string) (string, error) {
-	hash := randStringRunes(5)
+func (s *fileRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
+	hash, err := s.repo.SaveURL(ctx, url, userID)
+	if err != nil {
+		return "", err
+	}
 	record := recordShorURL{
-		UUID:        strconv.FormatInt(int64(s.lastUUID+1), 10),
+		UUID:        strconv.FormatInt(int64(s.lineLastUUID+1), 10),
 		ShortURL:    hash,
 		OriginalURL: url,
+		// UserID:      userID,
 	}
-	err := s.saveToFile(record)
+	err = s.saveToFile(record)
 	if err != nil {
 		return "", err
 	}
 
-	s.lastUUID++
-	s.storage[hash] = url
+	s.lineLastUUID++
 	return hash, nil
 }
 
 func (s *fileRepo) GetURLByID(ctx context.Context, id string) (string, error) {
-	res := s.storage[id]
+	return s.repo.GetURLByID(ctx, id)
+}
 
-	if res == "" {
-		return res, ErrNotFoundKey
-	}
-
-	return res, nil
+func (s *fileRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
+	return s.repo.GetUserURLs(ctx, userID)
 }
 
 func (s *fileRepo) Close() error {
+	s.repo.Close()
 	return s.file.Close()
 }
 
 func (s *fileRepo) Ping(ctx context.Context) error {
-	return nil
+	return s.repo.Ping(ctx)
 }
 
 func (s *fileRepo) SaveURLsBatch(ctx context.Context,
-	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
 	for _, v := range request {
-		hash, err := s.SaveURL(ctx, v.OriginalURL)
+		hash, err := s.SaveURL(ctx, v.OriginalURL, userID)
 		if err != nil {
 			return nil, err
 		}
 
 		response = append(response, model.CreateShortenURLBatchItemResponse{
 			CorrelationID: v.CorrelationID,
-			ShortURL: hash,
+			ShortURL:      hash,
 		})
 	}
 
 	return response, nil
+}
+
+func (s *fileRepo) GetNewUserID(ctx context.Context) (string, error) {
+	return s.repo.GetNewUserID(ctx)
 }
 
 func (s *fileRepo) loadAllData() error {
@@ -117,6 +117,7 @@ func (s *fileRepo) loadAllData() error {
 		return err
 	}
 
+	ctx := context.TODO()
 	scanner := bufio.NewScanner(file)
 	for {
 		if !scanner.Scan() {
@@ -134,13 +135,16 @@ func (s *fileRepo) loadAllData() error {
 			return err
 		}
 
-		s.storage[record.ShortURL] = record.OriginalURL
+		_, err = s.repo.SaveURL(ctx, record.OriginalURL, "")
+		if err != nil {
+			return err
+		}
 		parsed, err := strconv.ParseInt(record.UUID, 10, 32)
 		if err != nil {
 			return err
 		}
-		if s.lastUUID < int(parsed) {
-			s.lastUUID = int(parsed)
+		if s.lineLastUUID < int(parsed) {
+			s.lineLastUUID = int(parsed)
 		}
 	}
 

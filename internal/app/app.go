@@ -12,6 +12,7 @@ import (
 	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
 	usecasePinger "github.com/KartoonYoko/go-url-shortener/internal/usecase/ping"
 	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
+	usecaseAuth "github.com/KartoonYoko/go-url-shortener/internal/usecase/auth"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -20,6 +21,7 @@ import (
 type ShortenerRepoCloser interface {
 	usecaseShortener.ShortenerRepo
 	usecasePinger.PingRepo
+	usecaseAuth.AuthRepo
 	io.Closer
 }
 
@@ -43,9 +45,10 @@ func Run() {
 	// usecase'ы
 	serviceShortener := usecaseShortener.New(repo, conf.BaseURLAddress)
 	servicePinger := usecasePinger.NewPingUseCase(repo)
+	serviceAuth := usecaseAuth.NewAuthUseCase(repo)
 
 	// контроллеры
-	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, conf)
+	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, serviceAuth, conf)
 
 	shortenerController.Serve()
 }

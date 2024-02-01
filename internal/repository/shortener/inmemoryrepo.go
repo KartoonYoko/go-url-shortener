@@ -2,22 +2,30 @@ package shortener
 
 import (
 	"context"
+	"crypto/sha256"
 	"math/rand"
 	"time"
 
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	"github.com/google/uuid"
 )
+
+// данные url'а
+type urlDataItem struct {
+	url   string              // оригинальный URL
+	users map[string]struct{} // пользователи, которые когда-либо формировали этот URL; 
+}
 
 // хранилище коротки адресов в памяти
 type inMemoryRepo struct {
-	// хранилище адресов и их id'шников; ключ - id, значение - url
-	storage map[string]string
+	// хранилище адресов и их id'шников; ключ - id, значение - информация об URL'е
+	storage map[string]urlDataItem
 	r       *rand.Rand
 }
 
 func NewInMemoryRepo() *inMemoryRepo {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
-	s := make(map[string]string)
+	s := make(map[string]urlDataItem)
 	return &inMemoryRepo{
 		storage: s,
 		r:       r,
@@ -25,20 +33,51 @@ func NewInMemoryRepo() *inMemoryRepo {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *inMemoryRepo) SaveURL(ctx context.Context, url string) (string, error) {
-	hash := randStringRunes(5)
-	s.storage[hash] = url
+func (s *inMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
+	h := sha256.New()
+	hash, err := generateURLUniqueHash(h, url)
+	if err != nil {
+		return "", err
+	}
+
+	data := urlDataItem{
+		url:   url,
+		users: map[string]struct{}{},
+	}
+	if _, ok := data.users[userID]; !ok {
+		if userID != "" {
+			data.users[userID] = struct{}{}
+		}
+	}
+
+	s.storage[hash] = data
 	return hash, nil
 }
 
 func (s *inMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error) {
-	res := s.storage[id]
+	res, ok := s.storage[id]
 
-	if res == "" {
-		return res, ErrNotFoundKey
+	if !ok {
+		return "", ErrNotFoundKey
 	}
 
-	return res, nil
+	return res.url, nil
+}
+
+func (s *inMemoryRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
+	response := make([]model.GetUserURLsItemResponse, 0)
+	for urlID, data := range s.storage {
+		if _, ok := data.users[userID]; !ok {
+			continue
+		}
+
+		response = append(response, model.GetUserURLsItemResponse{
+			OriginalURL: data.url,
+			ShortURL:    urlID,
+		})
+	}
+
+	return response, nil
 }
 
 func (s *inMemoryRepo) Ping(ctx context.Context) error {
@@ -46,10 +85,10 @@ func (s *inMemoryRepo) Ping(ctx context.Context) error {
 }
 
 func (s *inMemoryRepo) SaveURLsBatch(ctx context.Context,
-	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
+	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
 	for _, v := range request {
-		hash, err := s.SaveURL(ctx, v.OriginalURL)
+		hash, err := s.SaveURL(ctx, v.OriginalURL, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -61,6 +100,11 @@ func (s *inMemoryRepo) SaveURLsBatch(ctx context.Context,
 	}
 
 	return response, nil
+}
+
+func (s *inMemoryRepo) GetNewUserID(ctx context.Context) (string, error) {
+	id := uuid.New()
+	return id.String(), nil
 }
 
 func (s *inMemoryRepo) Close() error {

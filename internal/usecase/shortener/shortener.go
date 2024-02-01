@@ -6,16 +6,17 @@ import (
 	"fmt"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
 	"go.uber.org/zap"
 )
 
 type ShortenerRepo interface {
-	SaveURL(ctx context.Context, url string) (string, error)
-	GetURLByID(ctx context.Context, id string) (string, error)
+	SaveURL(ctx context.Context, url string, userID string) (string, error)
 	SaveURLsBatch(ctx context.Context,
-		request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error)
+		request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error)
+	GetURLByID(ctx context.Context, id string) (string, error)
+	GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error)
 }
 
 type shortenerUsecase struct {
@@ -31,8 +32,8 @@ func New(repo ShortenerRepo, baseURLAddress string) *shortenerUsecase {
 }
 
 // сохранит url и вернёт его id'шник
-func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string) (string, error) {
-	hash, err := s.repository.SaveURL(ctx, hash)
+func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string, userID string) (string, error) {
+	hash, err := s.repository.SaveURL(ctx, hash, userID)
 	if err != nil {
 		var repoErrURLAlreadyExists *repository.URLAlreadyExistsError
 		if errors.As(err, &repoErrURLAlreadyExists) {
@@ -54,9 +55,21 @@ func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, e
 	return url, nil
 }
 
+func (s *shortenerUsecase) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
+	res, err := s.repository.GetUserURLs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range res {
+		res[i].ShortURL = s.getShorURL(res[i].ShortURL)
+	}
+
+	return res, nil
+}
+
 func (s *shortenerUsecase) SaveURLsBatch(ctx context.Context,
-	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
-	response, err := s.repository.SaveURLsBatch(ctx, request)
+	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
+	response, err := s.repository.SaveURLsBatch(ctx, request, userID)
 	if err != nil {
 		logger.Log.Error("save urls batch error", zap.Error(err))
 		return nil, err

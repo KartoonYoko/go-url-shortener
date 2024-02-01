@@ -1,12 +1,15 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	"github.com/KartoonYoko/go-url-shortener/internal/logger"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
 	"github.com/go-chi/chi/v5"
 )
@@ -14,7 +17,7 @@ import (
 // Эндпоинт с методом POST и путём /.
 // Сервер принимает в теле запроса строку URL как text/plain
 // и возвращает ответ с кодом 201 и сокращённым URL как text/plain.
-func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
+func (c *shortenerController) handlerRootPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST requests are allowed!", http.StatusBadRequest)
@@ -32,8 +35,15 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Empty body not allowed", http.StatusBadRequest)
 		return
 	}
+
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		http.Error(w, "Empty body not allowed", http.StatusBadRequest)
+		return
+	}
+
 	// - вернуть сокращенный url с помощью сервиса
-	url, err := c.uc.SaveURL(ctx, string(body))
+	url, err := c.uc.SaveURL(ctx, string(body), userID)
 	if err != nil {
 		var alreadyExistsErr *usecaseShortener.URLAlreadyExistsError
 		if errors.As(err, &alreadyExistsErr) {
@@ -53,7 +63,7 @@ func (c *shortenerController) post(w http.ResponseWriter, r *http.Request) {
 
 // Эндпоинт с методом GET и путём /{id}, где id — идентификатор сокращённого URL (например, /EwHXdJfB).
 // В случае успешной обработки запроса сервер возвращает ответ с кодом 307 и оригинальным URL в HTTP-заголовке Location.
-func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
+func (c *shortenerController) handlerRootGET(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
@@ -74,7 +84,7 @@ func (c *shortenerController) get(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.Request) {
+func (c *shortenerController) handlerAPIShortenPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var request model.CreateShortenURLRequest
@@ -88,7 +98,13 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	url, err := c.uc.SaveURL(ctx, string(request.URL))
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		http.Error(w, "Empty body not allowed", http.StatusBadRequest)
+		return
+	}
+
+	url, err := c.uc.SaveURL(ctx, string(request.URL), userID)
 	if err != nil {
 		var alreadyExistsErr *usecaseShortener.URLAlreadyExistsError
 		if errors.As(err, &alreadyExistsErr) {
@@ -124,7 +140,7 @@ func (c *shortenerController) postCreateShorten(w http.ResponseWriter, r *http.R
 	w.Write([]byte(res))
 }
 
-func (c *shortenerController) postCreateShortenBatch(w http.ResponseWriter, r *http.Request) {
+func (c *shortenerController) handlerAPIShortenBatchPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var request []model.CreateShortenURLBatchItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -132,7 +148,13 @@ func (c *shortenerController) postCreateShortenBatch(w http.ResponseWriter, r *h
 		return
 	}
 
-	response, err := c.uc.SaveURLsBatch(ctx, request)
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	response, err := c.uc.SaveURLsBatch(ctx, request, userID)
 	if err != nil {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
@@ -146,4 +168,56 @@ func (c *shortenerController) postCreateShortenBatch(w http.ResponseWriter, r *h
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(responseJSON))
+}
+
+// Иметь хендлер GET /api/user/urls,
+// который сможет вернуть пользователю все когда-либо сокращённые им URL в формате:
+//
+//			[
+//	    		{
+//	        		"short_url": "http://...",
+//	        		"original_url": "http://..."
+//	    		},
+//	    		...
+//			]
+//
+// При отсутствии сокращённых пользователем URL хендлер должен отдавать HTTP-статус 204 No Content.
+func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+	response, err := c.uc.GetUserURLs(ctx, userID)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+	if len(response) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return 	
+	}
+
+	responseJSON, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Can not serialize response", http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(responseJSON))
+}
+
+func (c *shortenerController) getUserIDFromContext(ctx context.Context) (string, error) {
+	ctxUserID := ctx.Value(keyUserID)
+	userID, ok := ctxUserID.(string)
+	if !ok {
+		msg := "can not get user ID from context"
+		logger.Log.Debug(msg)
+		return "", fmt.Errorf(msg)
+	}
+
+	return userID, nil
 }
