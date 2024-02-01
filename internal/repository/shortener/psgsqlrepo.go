@@ -219,8 +219,8 @@ func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) 
 // GetUserURLs вернёт все когда-либо сокращенные URL'ы пользователем
 func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	type GetModel struct {
-		url_id string
-		url    string
+		urlID string `db:"url_id"`
+		url   string `db:"url"`
 	}
 	models := []GetModel{}
 	err := s.conn.Select(&models, `
@@ -236,7 +236,7 @@ func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.Ge
 	response := make([]model.GetUserURLsItemResponse, 0, len(models))
 	for _, v := range models {
 		response = append(response, model.GetUserURLsItemResponse{
-			ShortURL:    v.url_id,
+			ShortURL:    v.urlID,
 			OriginalURL: v.url,
 		})
 	}
@@ -297,8 +297,8 @@ func (s *psgsqlRepo) insertUserIDAndHashes(ctx context.Context, userID string, h
 	}
 
 	type insertUserURLModel struct {
-		user_id string
-		url_id  string
+		userID string `db:"url_id"`
+		urlID  string `db:"url_id"`
 	}
 	hashesToInsert := make([]insertUserURLModel, 0, len(hashes))
 	for _, urlID := range hashes {
@@ -307,8 +307,8 @@ func (s *psgsqlRepo) insertUserIDAndHashes(ctx context.Context, userID string, h
 		}
 
 		hashesToInsert = append(hashesToInsert, insertUserURLModel{
-			user_id: userID,
-			url_id:  urlID,
+			userID: userID,
+			urlID:  urlID,
 		})
 	}
 	if len(hashesToInsert) == 0 {
