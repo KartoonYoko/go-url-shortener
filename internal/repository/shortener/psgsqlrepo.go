@@ -83,7 +83,7 @@ func (s *psgsqlRepo) SaveURL(ctx context.Context, url string, userID string) (st
 		var pgErr *pgconn.PgError
 		// если вставка не удалась по причине, что уже существует такой URL в БД,
 		// то делаем ещё один запрос для определения существующего ID
-		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+		if errors.As(err, &pgErr) && pgerrcode.UniqueViolation == pgErr.Code {
 			row := s.conn.QueryRowContext(ctx, "SELECT id FROM shorten_url WHERE url=$1", url)
 			err = row.Err()
 			if err != nil {
@@ -219,12 +219,12 @@ func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) 
 // GetUserURLs вернёт все когда-либо сокращенные URL'ы пользователем
 func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	type GetModel struct {
-		urlID string `db:"url_id"`
-		url   string `db:"url"`
+		UrlID string `db:"url_id"`
+		URL   string `db:"url"`
 	}
 	models := []GetModel{}
 	err := s.conn.Select(&models, `
-	SELECT * FROM users_shorten_url 
+	SELECT url_id, url FROM users_shorten_url 
 	LEFT JOIN shorten_url ON shorten_url.id=users_shorten_url.url_id
 	WHERE user_id=$1
 	`, userID)
@@ -236,8 +236,8 @@ func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.Ge
 	response := make([]model.GetUserURLsItemResponse, 0, len(models))
 	for _, v := range models {
 		response = append(response, model.GetUserURLsItemResponse{
-			ShortURL:    v.urlID,
-			OriginalURL: v.url,
+			ShortURL:    v.UrlID,
+			OriginalURL: v.URL,
 		})
 	}
 
@@ -255,6 +255,7 @@ func (s *psgsqlRepo) Ping(ctx context.Context) error {
 
 func (s *psgsqlRepo) GetNewUserID(ctx context.Context) (string, error) {
 	id := uuid.New()
+	// TODO сохрнаять пользователя в БД
 	return id.String(), nil
 }
 
@@ -263,7 +264,7 @@ func (s *psgsqlRepo) insertUserIDAndHash(ctx context.Context, userID string, has
 	_, err := s.conn.ExecContext(ctx, "INSERT INTO users_shorten_url (user_id, url_id) VALUES($1, $2)", userID, hash)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+		if errors.As(err, &pgErr) && pgerrcode.UniqueViolation == pgErr.Code {
 			// если уже существует, то добавлять не нужно
 			return nil
 		}

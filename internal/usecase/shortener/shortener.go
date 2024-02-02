@@ -58,6 +58,7 @@ func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, e
 func (s *shortenerUsecase) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	res, err := s.repository.GetUserURLs(ctx, userID)
 	if err != nil {
+		logger.Log.Error("get user urls error", zap.Error(err))
 		return nil, err
 	}
 	for i := range res {

@@ -21,7 +21,7 @@ type recordShorURL struct {
 
 type fileRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - данные
-	repo         inMemoryRepo
+	repo         InMemoryRepo
 	lineLastUUID int
 	filename     string
 	file         *os.File

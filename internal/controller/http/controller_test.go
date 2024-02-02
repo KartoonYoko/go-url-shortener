@@ -5,23 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type useCaseMock struct {
-	storage        map[string]string
-	r              *rand.Rand
-	letterRunes    []rune
+	repo repository.InMemoryRepo
+	// storage        map[string]string
+	// r              *rand.Rand
+	// letterRunes    []rune
 	baseAddressURL string
 }
 
@@ -31,61 +31,47 @@ func (s *useCaseMock) getURLFromHash(hash string) string {
 }
 
 func (s *useCaseMock) SaveURL(ctx context.Context, url string, userID string) (string, error) {
-	hash := s.randStringRunes(5)
-	s.storage[hash] = url
-	return s.getURLFromHash(hash), nil
+	// hash := s.randStringRunes(5)
+	// s.storage[hash] = url
+	// return s.getURLFromHash(hash), nil
+	return s.repo.SaveURL(ctx, url, userID)
 }
 
 func (s *useCaseMock) GetURLByID(ctx context.Context, id string) (string, error) {
-	res := s.storage[id]
+	// res := s.storage[id]
 
-	if res == "" {
-		return res, fmt.Errorf("Not found url by id %s", id)
-	}
+	// if res == "" {
+	// 	return res, fmt.Errorf("Not found url by id %s", id)
+	// }
 
-	return s.getURLFromHash(res), nil
+	// return s.getURLFromHash(res), nil
+	return s.repo.GetURLByID(ctx, id)
 }
 
 func (s *useCaseMock) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
-	return nil, fmt.Errorf("no implementation yet")
-}
-
-func (s *useCaseMock) randStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = s.letterRunes[rand.Intn(len(s.letterRunes))]
-	}
-	return string(b)
+	return s.repo.GetUserURLs(ctx, userID)
 }
 
 func (s *useCaseMock) SaveURLsBatch(ctx context.Context,
 	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
-	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
-	for i, v := range request {
-		hash, err := s.SaveURL(ctx, v.OriginalURL, userID)
-		if err != nil {
-			return nil, err
-		}
+	return s.repo.SaveURLsBatch(ctx, request, userID)
+}
 
-		response[i] = model.CreateShortenURLBatchItemResponse{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      s.getURLFromHash(hash),
-		}
-	}
-
-	return response, nil
+func (s *useCaseMock) GetNewUserID(ctx context.Context) (string, error) {
+	return s.repo.GetNewUserID(ctx)
 }
 
 // Метод собирает нужный контроллер, нужно вызывать в каждой функции.
 // Пока непонятно как правильно инициализировать данные, поэтому пока так.
 func createTestMock() *shortenerController {
 	uc := &useCaseMock{
-		r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
-		storage:        make(map[string]string),
-		letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+		repo: *repository.NewInMemoryRepo(),
+		// r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
+		// storage:        make(map[string]string),
+		// letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
 	}
-	c := NewShortenerController(uc, nil, nil, &config.Config{})
+	c := NewShortenerController(uc, nil, uc, &config.Config{})
 	return c
 }
 
@@ -394,6 +380,47 @@ func TestGet(t *testing.T) {
 				t.Logf("Requested url: %s", res.Request.URL)
 				t.Logf("Requesst method: %s", res.Request.Method)
 				t.Logf("Body: %s", res.Body())
+			}
+		})
+	}
+}
+
+func TestHandlerAPIUserURLsGET(t *testing.T) {
+	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+	apiRoute := "/api/user/urls"
+
+	// какой результат хотим получить
+	type want struct {
+		code        int
+		contentType string
+	}
+	tests := []struct {
+		name string
+		want want
+	}{
+		{
+			name: "No content",
+			want: want{
+				code:        http.StatusNoContent,
+				contentType: "",
+			},
+		},
+	}
+
+	httpClient := resty.New().SetBaseURL(srv.URL)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := httpClient.R().Get(srv.URL + apiRoute)
+			require.NoError(t, err)
+			assert.Equal(t, test.want.code, res.StatusCode())
+			if test.want.contentType != "" {
+				assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
 			}
 		})
 	}

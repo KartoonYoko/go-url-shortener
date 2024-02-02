@@ -13,27 +13,27 @@ import (
 // данные url'а
 type urlDataItem struct {
 	url   string              // оригинальный URL
-	users map[string]struct{} // пользователи, которые когда-либо формировали этот URL; 
+	users map[string]struct{} // пользователи, которые когда-либо формировали этот URL;
 }
 
 // хранилище коротки адресов в памяти
-type inMemoryRepo struct {
+type InMemoryRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - информация об URL'е
 	storage map[string]urlDataItem
 	r       *rand.Rand
 }
 
-func NewInMemoryRepo() *inMemoryRepo {
+func NewInMemoryRepo() *InMemoryRepo {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
 	s := make(map[string]urlDataItem)
-	return &inMemoryRepo{
+	return &InMemoryRepo{
 		storage: s,
 		r:       r,
 	}
 }
 
 // сохранит url и вернёт его id'шник
-func (s *inMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
+func (s *InMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
 	h := sha256.New()
 	hash, err := generateURLUniqueHash(h, url)
 	if err != nil {
@@ -54,7 +54,7 @@ func (s *inMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (
 	return hash, nil
 }
 
-func (s *inMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error) {
+func (s *InMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	res, ok := s.storage[id]
 
 	if !ok {
@@ -64,7 +64,7 @@ func (s *inMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error
 	return res.url, nil
 }
 
-func (s *inMemoryRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
+func (s *InMemoryRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	response := make([]model.GetUserURLsItemResponse, 0)
 	for urlID, data := range s.storage {
 		if _, ok := data.users[userID]; !ok {
@@ -80,13 +80,13 @@ func (s *inMemoryRepo) GetUserURLs(ctx context.Context, userID string) ([]model.
 	return response, nil
 }
 
-func (s *inMemoryRepo) Ping(ctx context.Context) error {
+func (s *InMemoryRepo) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *inMemoryRepo) SaveURLsBatch(ctx context.Context,
+func (s *InMemoryRepo) SaveURLsBatch(ctx context.Context,
 	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
-	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
+	response := make([]model.CreateShortenURLBatchItemResponse, 0, len(request))
 	for _, v := range request {
 		hash, err := s.SaveURL(ctx, v.OriginalURL, userID)
 		if err != nil {
@@ -102,11 +102,11 @@ func (s *inMemoryRepo) SaveURLsBatch(ctx context.Context,
 	return response, nil
 }
 
-func (s *inMemoryRepo) GetNewUserID(ctx context.Context) (string, error) {
+func (s *InMemoryRepo) GetNewUserID(ctx context.Context) (string, error) {
 	id := uuid.New()
 	return id.String(), nil
 }
 
-func (s *inMemoryRepo) Close() error {
+func (s *InMemoryRepo) Close() error {
 	return nil
 }
