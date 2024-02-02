@@ -306,7 +306,7 @@ func (s *psgsqlRepo) insertUserIDAndHashes(ctx context.Context, userID string, h
 	}
 
 	type insertUserURLModel struct {
-		userID string `db:"url_id"`
+		userID string `db:"user_id"`
 		urlID  string `db:"url_id"`
 	}
 	hashesToInsert := make([]insertUserURLModel, 0, len(hashes))
