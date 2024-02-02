@@ -219,7 +219,7 @@ func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) 
 // GetUserURLs вернёт все когда-либо сокращенные URL'ы пользователем
 func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	type GetModel struct {
-		UrlID string `db:"url_id"`
+		URLID string `db:"url_id"`
 		URL   string `db:"url"`
 	}
 	models := []GetModel{}
@@ -236,7 +236,7 @@ func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.Ge
 	response := make([]model.GetUserURLsItemResponse, 0, len(models))
 	for _, v := range models {
 		response = append(response, model.GetUserURLsItemResponse{
-			ShortURL:    v.UrlID,
+			ShortURL:    v.URLID,
 			OriginalURL: v.URL,
 		})
 	}
@@ -255,7 +255,15 @@ func (s *psgsqlRepo) Ping(ctx context.Context) error {
 
 func (s *psgsqlRepo) GetNewUserID(ctx context.Context) (string, error) {
 	id := uuid.New()
-	// TODO сохрнаять пользователя в БД
+	_, err := s.conn.ExecContext(ctx, "INSERT INTO users (id) VALUES($1)", id)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgerrcode.UniqueViolation == pgErr.Code {
+			return id.String(), nil
+		}
+
+		return "", err
+	}
 	return id.String(), nil
 }
 
