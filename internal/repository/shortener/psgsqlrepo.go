@@ -136,7 +136,7 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 	}
 
 	// добавим в БД несуществующие
-	mapToInsert := []map[string]interface{}{}
+	arrOfmapToInsert := []map[string]interface{}{}
 	h := sha256.New()
 	for _, url := range notExistsURLs {
 		// если уже существует - добавлять не нужно
@@ -149,7 +149,7 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 			return nil, err
 		}
 
-		mapToInsert = append(mapToInsert, map[string]interface{}{
+		arrOfmapToInsert = append(arrOfmapToInsert, map[string]interface{}{
 			"id":  id,
 			"url": url,
 		})
@@ -157,15 +157,35 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 		// запомним сгенерированный url для ответа и чтобы больше не генерировать ID
 		existsURLs[url] = id
 	}
-	if len(mapToInsert) > 0 {
-		_, err = s.conn.NamedExec(`INSERT INTO shorten_url (id, url) VALUES(:id, :url)`, mapToInsert)
+	if len(arrOfmapToInsert) > 0 {
+		_, err = s.conn.NamedExec(`INSERT INTO shorten_url (id, url) VALUES(:id, :url)`, arrOfmapToInsert)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// сохраним информацию о пользователе
-	err = s.insertUserIDAndHashes(ctx, userID, notExistsURLs)
+	// TODO
+	allURLsIDsMap := make(map[string]struct{})
+	for _, urlHash := range existsURLs {
+		allURLsIDsMap[urlHash] = struct{}{}
+	}
+	for _, mapItem := range arrOfmapToInsert {
+		urlHashInterface, ok := mapItem["id"]
+		if !ok {
+			continue
+		}
+		urlHash, ok := urlHashInterface.(string)
+		if !ok {
+			continue
+		}
+		allURLsIDsMap[urlHash] = struct{}{}
+	}
+	allURLsIDsArr := make([]string, 0, len(allURLsIDsMap))
+	for k := range allURLsIDsMap {
+		allURLsIDsArr = append(allURLsIDsArr, k)
+	}
+	err = s.insertUserIDAndHashes(ctx, userID, allURLsIDsArr)
 	if err != nil {
 		return nil, err
 	}
@@ -306,8 +326,8 @@ func (s *psgsqlRepo) insertUserIDAndHashes(ctx context.Context, userID string, h
 	}
 
 	type insertUserURLModel struct {
-		userID string `db:"user_id"`
-		urlID  string `db:"url_id"`
+		UserID string `db:"user_id"`
+		URLID  string `db:"url_id"`
 	}
 	hashesToInsert := make([]insertUserURLModel, 0, len(hashes))
 	for _, urlID := range hashes {
@@ -316,8 +336,8 @@ func (s *psgsqlRepo) insertUserIDAndHashes(ctx context.Context, userID string, h
 		}
 
 		hashesToInsert = append(hashesToInsert, insertUserURLModel{
-			userID: userID,
-			urlID:  urlID,
+			UserID: userID,
+			URLID:  urlID,
 		})
 	}
 	if len(hashesToInsert) == 0 {
