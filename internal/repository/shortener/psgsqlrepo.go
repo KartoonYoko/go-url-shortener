@@ -165,7 +165,6 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 	}
 
 	// сохраним информацию о пользователе
-	// TODO
 	allURLsIDsMap := make(map[string]struct{})
 	for _, urlHash := range existsURLs {
 		allURLsIDsMap[urlHash] = struct{}{}

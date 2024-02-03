@@ -67,13 +67,10 @@ func (c *shortenerController) authJWTCookieMiddleware(next http.Handler) http.Ha
 			}
 
 			userID, err = validateAndGetUserID(cookieValue)
+			// вернуть 401
 			if err != nil {
-				userID, err = handleCookieError(ctx, w, c)
-				if err != nil {
-					logger.Log.Error("middleware auth error: ", zap.Error(err))
-					http.Error(w, "unexpected auth error", http.StatusInternalServerError)
-					return
-				}
+				w.WriteHeader(http.StatusUnauthorized)
+				return
 			}
 		}
 
