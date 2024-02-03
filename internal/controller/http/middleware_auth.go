@@ -87,7 +87,7 @@ func handleCookieError(ctx context.Context, w http.ResponseWriter, c *shortenerC
 	if err != nil {
 		return "", err
 	}
-	err = createJWTAndSaveAsCookie(w, userID)
+	err = createJWTAndSaveAsCookieAnHeader(w, userID)
 	if err != nil {
 		return "", err
 	}
@@ -95,23 +95,25 @@ func handleCookieError(ctx context.Context, w http.ResponseWriter, c *shortenerC
 	return userID, err
 }
 
-func createJWTAndSaveAsCookie(w http.ResponseWriter, userID string) error {
+func createJWTAndSaveAsCookieAnHeader(w http.ResponseWriter, userID string) error {
 	jwt, err := buildJWTString(userID)
 	if err != nil {
 		return err
 	}
+	bearerStr := fmt.Sprintf("Bearer %s", jwt)
 
 	cookie := http.Cookie{
 		Name:     "Authorization",
-		Value:    fmt.Sprintf("Bearer %s", jwt),
+		Value:    bearerStr,
 		Path:     "/",
-		MaxAge:   3600 * 3,
+		MaxAge:   0,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	}
 
 	http.SetCookie(w, &cookie)
+	w.Header().Add("Authorization", bearerStr)
 	return nil
 }
 
