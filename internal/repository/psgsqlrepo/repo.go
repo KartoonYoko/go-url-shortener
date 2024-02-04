@@ -32,7 +32,7 @@ func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
 	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten_url (
 		id VARCHAR PRIMARY KEY,
 		url VARCHAR,
-		deleted_flag boolean DEFAULT false,
+		deleted_flag boolean DEFAULT false
 	)`)
 	tx.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
 
