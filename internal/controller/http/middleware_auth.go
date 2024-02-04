@@ -35,19 +35,17 @@ const SecretKey = "supersecretkey"
 //   - Если кука не содержит ID пользователя, хендлер должен возвращать HTTP-статус 401 Unauthorized.
 func (c *shortenerController) authJWTCookieMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// - получить куку
-		// - если существует
-		// 		- провалидировать JWT из куки
-		// 			- если не содержит ID, вернуть 401
-		// 			- если не валиден, то собрать JWT вместе с нвоым UserID и добавить в куки
-		// - если не существует
-		// 		- собрать JWT вместе с нвоым UserID и добавить в куки
-
 		var userID string
 		ctx := r.Context()
 		cookie, err := r.Cookie("Authorization")
 		if err != nil {
 			if errors.Is(err, http.ErrNoCookie) {
+				// если это запрос на получение URL'ов пользователя,
+				// то возвращаем 401, т.к. куки не найден
+				if r.URL.Path == "/api/user/urls" {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 				userID, err = handleCookieError(ctx, w, c)
 				if err != nil {
 					logger.Log.Error("middleware auth error: ", zap.Error(err))
