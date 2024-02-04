@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
@@ -25,26 +27,11 @@ type useCaseMock struct {
 	baseAddressURL string
 }
 
-func (s *useCaseMock) getURLFromHash(hash string) string {
-	// return fmt.Sprintf("%s/%s", s.baseAddressURL, hash)
-	return hash
-}
-
 func (s *useCaseMock) SaveURL(ctx context.Context, url string, userID string) (string, error) {
-	// hash := s.randStringRunes(5)
-	// s.storage[hash] = url
-	// return s.getURLFromHash(hash), nil
 	return s.repo.SaveURL(ctx, url, userID)
 }
 
 func (s *useCaseMock) GetURLByID(ctx context.Context, id string) (string, error) {
-	// res := s.storage[id]
-
-	// if res == "" {
-	// 	return res, fmt.Errorf("Not found url by id %s", id)
-	// }
-
-	// return s.getURLFromHash(res), nil
 	return s.repo.GetURLByID(ctx, id)
 }
 
@@ -393,6 +380,7 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 	defer srv.Close()
 	controller.conf.BaseURLAddress = srv.URL
 	apiRoute := "/api/user/urls"
+	unauthorizedTestName := "Unauthorized"
 
 	// какой результат хотим получить
 	type want struct {
@@ -404,15 +392,28 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 		want want
 	}{
 		{
-			name: "No content",
+			name: unauthorizedTestName,
 			want: want{
-				code:        http.StatusNoContent,
+				code:        http.StatusUnauthorized,
 				contentType: "",
+			},
+		},
+		{
+			name: "Get content",
+			want: want{
+				code:        http.StatusOK,
+				contentType: "application/json",
 			},
 		},
 	}
 
-	httpClient := resty.New().SetBaseURL(srv.URL)
+	// создаем cookie jar для сохранения cookies между запросами
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	httpClient := resty.
+		New().
+		SetBaseURL(srv.URL).
+		SetCookieJar(jar)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -421,6 +422,23 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 			assert.Equal(t, test.want.code, res.StatusCode())
 			if test.want.contentType != "" {
 				assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
+			}
+
+			// если неавторизованный тест, то пробуем добавить URL для пользователя
+			if test.name == unauthorizedTestName {
+				req := httpClient.
+					R().
+					SetBody("https://music.yandex.ru/home")
+				resp, err := req.Post("/")
+				assert.NoError(t, err, "Ошибка при попытке сделать запрос для сокращения URL")
+				shortenURL := string(resp.Body())
+				assert.Equalf(t, http.StatusCreated, resp.StatusCode(),
+					"Несоответствие статус кода ответа ожидаемому в хендлере '%s %s'", req.Method, req.URL)
+
+				_, urlParseErr := url.Parse(shortenURL)
+				assert.NoErrorf(t, urlParseErr,
+					"Невозможно распарсить полученный сокращенный URL - %s : %s", shortenURL, err,
+				)
 			}
 		})
 	}
