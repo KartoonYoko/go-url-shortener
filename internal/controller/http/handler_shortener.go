@@ -206,7 +206,7 @@ func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *ht
 	}
 	
 	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(responseJSON))
 }
 
