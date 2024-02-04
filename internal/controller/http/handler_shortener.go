@@ -76,6 +76,10 @@ func (c *shortenerController) handlerRootGET(w http.ResponseWriter, r *http.Requ
 	// - получить из сервиса оригинальный url по id
 	url, err := c.uc.GetURLByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, usecaseShortener.ErrURLDeleted) {
+			w.WriteHeader(http.StatusGone)
+			return
+		}
 		http.Error(w, "Url not found", http.StatusBadRequest)
 		return
 	}
@@ -208,6 +212,29 @@ func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *ht
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(responseJSON))
+}
+
+func (c *shortenerController) handlerAPIUserURLsDELETE(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	var request []string
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Can not parse body", http.StatusBadRequest)
+		return
+	}
+
+	err = c.uc.DeleteURLs(ctx, userID, request)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (c *shortenerController) getUserIDFromContext(ctx context.Context) (string, error) {

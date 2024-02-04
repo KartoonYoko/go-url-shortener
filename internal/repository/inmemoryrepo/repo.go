@@ -3,6 +3,7 @@ package inmemoryrepo
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"math/rand"
 	"time"
 
@@ -31,6 +32,10 @@ func NewInMemoryRepo() *InMemoryRepo {
 		storage: s,
 		r:       r,
 	}
+}
+
+func (s *InMemoryRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error {
+	return errors.New("Not implemented")
 }
 
 // сохранит url и вернёт его id'шник

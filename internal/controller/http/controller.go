@@ -16,6 +16,7 @@ type useCaseShortener interface {
 	SaveURLsBatch(ctx context.Context,
 		request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error)
 	GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error)
+	DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error
 }
 
 type useCasePinger interface {
@@ -70,6 +71,7 @@ func routeAPI(r *chi.Mux, c *shortenerController) {
 	apiRouter.Post("/shorten", c.handlerAPIShortenPOST)
 	apiRouter.Post("/shorten/batch", c.handlerAPIShortenBatchPOST)
 	apiRouter.Get("/user/urls", c.handlerAPIUserURLsGET)
+	apiRouter.Delete("/user/urls", c.handlerAPIUserURLsDELETE)
 
 	r.Mount("/api", apiRouter)
 }

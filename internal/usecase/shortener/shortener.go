@@ -17,6 +17,7 @@ type ShortenerRepo interface {
 		request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error)
 	GetURLByID(ctx context.Context, id string) (string, error)
 	GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error)
+	UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error
 }
 
 type shortenerUsecase struct {
@@ -49,6 +50,9 @@ func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string, userID stri
 func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, error) {
 	url, err := s.repository.GetURLByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, repository.ErrURLDeleted) {
+			return "", ErrURLDeleted
+		}
 		logger.Log.Error("get url error", zap.Error(err))
 		return "", err
 	}

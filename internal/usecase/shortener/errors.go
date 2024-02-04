@@ -1,6 +1,11 @@
 package shortener
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrURLDeleted = errors.New("service: url was removed")
 
 type URLAlreadyExistsError struct {
 	URL      string // URL, который уже существует в базе

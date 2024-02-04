@@ -108,6 +108,10 @@ func (s *fileRepo) GetNewUserID(ctx context.Context) (string, error) {
 	return s.repo.GetNewUserID(ctx)
 }
 
+func (s *fileRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error {
+	return s.repo.UpdateURLsDeletedFlag(ctx, userID, modelsCh)
+}
+
 func (s *fileRepo) loadAllData() error {
 	if s.filename == "" {
 		return nil

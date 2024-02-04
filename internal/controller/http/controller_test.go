@@ -48,6 +48,10 @@ func (s *useCaseMock) GetNewUserID(ctx context.Context) (string, error) {
 	return s.repo.GetNewUserID(ctx)
 }
 
+func (s *useCaseMock) DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error {
+	return nil
+}
+
 // Метод собирает нужный контроллер, нужно вызывать в каждой функции.
 // Пока непонятно как правильно инициализировать данные, поэтому пока так.
 func createTestMock() *shortenerController {
@@ -442,4 +446,28 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandlerAPIUserURLsDELETE(t *testing.T) {
+	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+	apiRoute := "/api/user/urls"
+
+	httpClient := resty.
+		New().
+		SetBaseURL(srv.URL)
+	request := []string{
+		"https://angular.io",
+		"https://www.postgresqltutorial.com",
+	}
+	res, err := httpClient.
+		R().
+		SetBody(request).
+		Delete(srv.URL + apiRoute)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusAccepted, res.StatusCode())
 }

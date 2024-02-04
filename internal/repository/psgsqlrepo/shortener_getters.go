@@ -4,16 +4,24 @@ import (
 	"context"
 
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	reoppsitory "github.com/KartoonYoko/go-url-shortener/internal/repository"
 )
 
 func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) {
-	row := s.conn.QueryRowContext(ctx, "SELECT url FROM shorten_url WHERE id=$1", id)
-	var url string
-	err := row.Scan(&url)
+	type queryResult struct {
+		URL       string `db:"url"`
+		isDeleted bool   `db:"deleted_flag"`
+	}
+	var res queryResult
+	err := s.conn.GetContext(ctx, &res, "SELECT url, deleted_flag FROM shorten_url WHERE id=$1", id)
 	if err != nil {
 		return "", err
 	}
-	return url, nil
+	if res.isDeleted {
+		return "", reoppsitory.ErrURLDeleted
+	}
+
+	return res.URL, nil
 }
 
 // GetUserURLs вернёт все когда-либо сокращенные URL'ы пользователем
