@@ -1,4 +1,4 @@
-package shortener
+package psgsqlrepo
 
 import (
 	"context"
@@ -8,72 +8,19 @@ import (
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
-	"github.com/google/uuid"
+	repoCommon "github.com/KartoonYoko/go-url-shortener/internal/repository"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
-type psgsqlRepo struct {
-	conn *sqlx.DB
-}
-
-func NewPsgsqlRepo(ctx context.Context, db *sqlx.DB) (*psgsqlRepo, error) {
-	repo := &psgsqlRepo{
-		conn: db,
-	}
-	err := repo.createSchema(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return repo, nil
-}
-
-func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
-	tx, err := s.conn.BeginTx(ctx, nil)
-	if err != nil {
-		return
-	}
-	defer tx.Rollback()
-
-	// таблица URL'ов
-	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten_url (
-		id VARCHAR PRIMARY KEY,
-		url VARCHAR
-	)`)
-	tx.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS url_idx ON shorten_url (url)")
-
-	// таблица пользователей
-	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users (
-		id VARCHAR PRIMARY KEY
-	)`)
-
-	// таблица пользователей/URL'ов
-	tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users_shorten_url (
-		user_id VARCHAR,
-		url_id VARCHAR,
-
-		PRIMARY KEY(user_id, url_id),
-
-		CONSTRAINT fk_user_id
-		FOREIGN KEY (user_id) 
-		REFERENCES users (id),
-
-		CONSTRAINT fk_url_id
-		FOREIGN KEY (url_id) 
-		REFERENCES shorten_url (id)
-	)`)
-
-	return tx.Commit()
-}
-
 // сохранит url и вернёт его id'шник
 func (s *psgsqlRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
 	// сгенерируем уникальный ID для URL'a
 	h := sha256.New()
 	var err error
-	hash, err := generateURLUniqueHash(h, url)
+	hash, err := repoCommon.GenerateURLUniqueHash(h, url)
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +46,7 @@ func (s *psgsqlRepo) SaveURL(ctx context.Context, url string, userID string) (st
 				return "", err
 			}
 
-			err = NewURLAlreadyExistsError(hash, url)
+			err = repoCommon.NewURLAlreadyExistsError(hash, url)
 			return hash, err
 		}
 
@@ -144,7 +91,7 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 			continue
 		}
 
-		id, err := generateURLUniqueHash(h, url)
+		id, err := repoCommon.GenerateURLUniqueHash(h, url)
 		if err != nil {
 			return nil, err
 		}
@@ -223,67 +170,6 @@ func (s *psgsqlRepo) SaveURLsBatch(ctx context.Context,
 	}
 
 	return response, nil
-}
-
-func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) {
-	row := s.conn.QueryRowContext(ctx, "SELECT url FROM shorten_url WHERE id=$1", id)
-	var url string
-	err := row.Scan(&url)
-	if err != nil {
-		return "", err
-	}
-	return url, nil
-}
-
-// GetUserURLs вернёт все когда-либо сокращенные URL'ы пользователем
-func (s *psgsqlRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
-	type GetModel struct {
-		URLID string `db:"url_id"`
-		URL   string `db:"url"`
-	}
-	models := []GetModel{}
-	err := s.conn.Select(&models, `
-	SELECT url_id, url FROM users_shorten_url 
-	LEFT JOIN shorten_url ON shorten_url.id=users_shorten_url.url_id
-	WHERE user_id=$1
-	`, userID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	response := make([]model.GetUserURLsItemResponse, 0, len(models))
-	for _, v := range models {
-		response = append(response, model.GetUserURLsItemResponse{
-			ShortURL:    v.URLID,
-			OriginalURL: v.URL,
-		})
-	}
-
-	return response, nil
-}
-
-func (s *psgsqlRepo) Close() error {
-	s.conn.Close()
-	return nil
-}
-
-func (s *psgsqlRepo) Ping(ctx context.Context) error {
-	return s.conn.PingContext(ctx)
-}
-
-func (s *psgsqlRepo) GetNewUserID(ctx context.Context) (string, error) {
-	id := uuid.New()
-	_, err := s.conn.ExecContext(ctx, "INSERT INTO users (id) VALUES($1)", id)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgerrcode.UniqueViolation == pgErr.Code {
-			return id.String(), nil
-		}
-
-		return "", err
-	}
-	return id.String(), nil
 }
 
 // insertUserIDAndHash вставляет запись о пользователе и URL'е в таблицу, если записи нет

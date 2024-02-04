@@ -1,4 +1,4 @@
-package shortener
+package filerepo
 
 import (
 	"bufio"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	inmr "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
 )
 
 // строка записи в файле
@@ -21,7 +22,7 @@ type recordShorURL struct {
 
 type fileRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - данные
-	repo         InMemoryRepo
+	repo         inmr.InMemoryRepo
 	lineLastUUID int
 	filename     string
 	file         *os.File
@@ -29,7 +30,7 @@ type fileRepo struct {
 
 func NewFileRepo(fileName string) (*fileRepo, error) {
 	repo := &fileRepo{
-		repo:         *NewInMemoryRepo(),
+		repo:         *inmr.NewInMemoryRepo(),
 		lineLastUUID: 0,
 		filename:     fileName,
 	}

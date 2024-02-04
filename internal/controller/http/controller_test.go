@@ -13,14 +13,14 @@ import (
 
 	"github.com/KartoonYoko/go-url-shortener/config"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
-	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
+	inmr "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type useCaseMock struct {
-	repo repository.InMemoryRepo
+	repo inmr.InMemoryRepo
 	// storage        map[string]string
 	// r              *rand.Rand
 	// letterRunes    []rune
@@ -52,7 +52,7 @@ func (s *useCaseMock) GetNewUserID(ctx context.Context) (string, error) {
 // Пока непонятно как правильно инициализировать данные, поэтому пока так.
 func createTestMock() *shortenerController {
 	uc := &useCaseMock{
-		repo: *repository.NewInMemoryRepo(),
+		repo: *inmr.NewInMemoryRepo(),
 		// r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
 		// storage:        make(map[string]string),
 		// letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),

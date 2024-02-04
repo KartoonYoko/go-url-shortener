@@ -1,4 +1,4 @@
-package shortener
+package inmemoryrepo
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	repoCommon "github.com/KartoonYoko/go-url-shortener/internal/repository"
 	"github.com/google/uuid"
 )
 
@@ -35,7 +36,7 @@ func NewInMemoryRepo() *InMemoryRepo {
 // сохранит url и вернёт его id'шник
 func (s *InMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
 	h := sha256.New()
-	hash, err := generateURLUniqueHash(h, url)
+	hash, err := repoCommon.GenerateURLUniqueHash(h, url)
 	if err != nil {
 		return "", err
 	}
@@ -58,7 +59,7 @@ func (s *InMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error
 	res, ok := s.storage[id]
 
 	if !ok {
-		return "", ErrNotFoundKey
+		return "", repoCommon.ErrNotFoundKey
 	}
 
 	return res.url, nil

@@ -1,4 +1,4 @@
-package shortener
+package repository
 
 import (
 	"encoding/base64"
@@ -15,7 +15,7 @@ import (
 // 	return string(b)
 // }
 
-func generateURLUniqueHash(h hash.Hash, url string) (string, error) {
+func GenerateURLUniqueHash(h hash.Hash, url string) (string, error) {
 	h.Reset()
 	_, err := h.Write([]byte(url))
 	if err != nil {

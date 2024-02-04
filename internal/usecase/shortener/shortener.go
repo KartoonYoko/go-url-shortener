@@ -7,7 +7,7 @@ import (
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
-	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
+	repository "github.com/KartoonYoko/go-url-shortener/internal/repository"
 	"go.uber.org/zap"
 )
 
