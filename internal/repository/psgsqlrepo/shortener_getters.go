@@ -10,14 +10,14 @@ import (
 func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	type queryResult struct {
 		URL       string `db:"url"`
-		isDeleted bool   `db:"deleted_flag"`
+		IsDeleted bool   `db:"deleted_flag"`
 	}
 	var res queryResult
 	err := s.conn.GetContext(ctx, &res, "SELECT url, deleted_flag FROM shorten_url WHERE id=$1", id)
 	if err != nil {
 		return "", err
 	}
-	if res.isDeleted {
+	if res.IsDeleted {
 		return "", reoppsitory.ErrURLDeleted
 	}
 

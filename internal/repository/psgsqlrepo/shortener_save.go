@@ -248,7 +248,7 @@ func (s *psgsqlRepo) getMapedExistsURLs(ctx context.Context,
 	for _, v := range batch {
 		requestURLs = append(requestURLs, v.OriginalURL)
 	}
-	query, args, err := sqlx.In(`SELECT * FROM shorten_url WHERE url IN (?)`, requestURLs)
+	query, args, err := sqlx.In(`SELECT id, url FROM shorten_url WHERE url IN (?)`, requestURLs)
 	if err != nil {
 		return nil, err
 	}
