@@ -35,7 +35,7 @@ func NewInMemoryRepo() *InMemoryRepo {
 }
 
 func (s *InMemoryRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error {
-	return errors.New("Not implemented")
+	return errors.New("not implemented")
 }
 
 // сохранит url и вернёт его id'шник

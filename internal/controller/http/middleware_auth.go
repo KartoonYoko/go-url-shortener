@@ -42,7 +42,7 @@ func (c *shortenerController) authJWTCookieMiddleware(next http.Handler) http.Ha
 			if errors.Is(err, http.ErrNoCookie) {
 				// если это запрос на получение URL'ов пользователя,
 				// то возвращаем 401, т.к. куки не найден
-				if r.URL.Path == "/api/user/urls" {
+				if r.URL.Path == "/api/user/urls" && r.Method == http.MethodGet {
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
