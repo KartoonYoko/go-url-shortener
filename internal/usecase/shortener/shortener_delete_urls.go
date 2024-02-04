@@ -8,15 +8,26 @@ import (
 )
 
 func (s *shortenerUsecase) DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error {
-	inputCh := make(chan string)
-	defer close(inputCh)
-
-	for _, v := range urlsIDs {
-		inputCh <- v
-	}
-
-	modelToUpdateCh := fanIn(ctx, fanOut(ctx, inputCh, 10)...)
+	modelToUpdateCh := fanIn(ctx, fanOut(ctx, generator(ctx, urlsIDs), 10)...)
 	return s.repository.UpdateURLsDeletedFlag(ctx, userID, modelToUpdateCh)
+}
+
+func generator(ctx context.Context, input []string) chan string {
+    inputCh := make(chan string)
+
+    go func() {
+        defer close(inputCh)
+
+        for _, data := range input {
+            select {
+            case <-ctx.Done():
+                return
+            case inputCh <- data:
+            }
+        }
+    }()
+
+    return inputCh
 }
 
 // createModelToUpdateFlag создаёт модель обновления флага из ID'шника URL'а
@@ -58,29 +69,19 @@ func fanOut(ctx context.Context, inputCh chan string, numWorkers int) []chan mod
 func fanIn(ctx context.Context, resultChs ...chan model.UpdateURLDeletedFlag) chan model.UpdateURLDeletedFlag {
 	// конечный выходной канал в который отправляем данные из всех каналов из слайса, назовём его результирующим
 	finalCh := make(chan model.UpdateURLDeletedFlag)
-
-	// понадобится для ожидания всех горутин
 	var wg sync.WaitGroup
-
-	// перебираем все входящие каналы
 	for _, ch := range resultChs {
-		// в горутину передавать переменную цикла нельзя, поэтому делаем так
 		chClosure := ch
-
-		// инкрементируем счётчик горутин, которые нужно подождать
+		
 		wg.Add(1)
 
 		go func() {
-			// откладываем сообщение о том, что горутина завершилась
 			defer wg.Done()
 
-			// получаем данные из канала
 			for data := range chClosure {
 				select {
-				// выходим из горутины, если канал закрылся
 				case <-ctx.Done():
 					return
-				// если не закрылся, отправляем данные в конечный выходной канал
 				case finalCh <- data:
 				}
 			}
@@ -88,9 +89,7 @@ func fanIn(ctx context.Context, resultChs ...chan model.UpdateURLDeletedFlag) ch
 	}
 
 	go func() {
-		// ждём завершения всех горутин
 		wg.Wait()
-		// когда все горутины завершились, закрываем результирующий канал
 		close(finalCh)
 	}()
 
