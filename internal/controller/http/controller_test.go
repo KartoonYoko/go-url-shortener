@@ -5,83 +5,64 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"testing"
-	"time"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	inmr "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type useCaseMock struct {
-	storage        map[string]string
-	r              *rand.Rand
-	letterRunes    []rune
+	repo inmr.InMemoryRepo
+	// storage        map[string]string
+	// r              *rand.Rand
+	// letterRunes    []rune
 	baseAddressURL string
 }
 
-func (s *useCaseMock) getURLFromHash(hash string) string {
-	// return fmt.Sprintf("%s/%s", s.baseAddressURL, hash)
-	return hash
-}
-
-func (s *useCaseMock) SaveURL(ctx context.Context, url string) (string, error) {
-	hash := s.randStringRunes(5)
-	s.storage[hash] = url
-	return s.getURLFromHash(hash), nil
+func (s *useCaseMock) SaveURL(ctx context.Context, url string, userID string) (string, error) {
+	return s.repo.SaveURL(ctx, url, userID)
 }
 
 func (s *useCaseMock) GetURLByID(ctx context.Context, id string) (string, error) {
-	res := s.storage[id]
-
-	if res == "" {
-		return res, fmt.Errorf("Not found url by id %s", id)
-	}
-
-	return s.getURLFromHash(res), nil
+	return s.repo.GetURLByID(ctx, id)
 }
 
-func (s *useCaseMock) randStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = s.letterRunes[rand.Intn(len(s.letterRunes))]
-	}
-	return string(b)
+func (s *useCaseMock) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
+	return s.repo.GetUserURLs(ctx, userID)
 }
 
 func (s *useCaseMock) SaveURLsBatch(ctx context.Context,
-	request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error) {
-	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
-	for i, v := range request {
-		hash, err := s.SaveURL(ctx, v.OriginalURL)
-		if err != nil {
-			return nil, err
-		}
+	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
+	return s.repo.SaveURLsBatch(ctx, request, userID)
+}
 
-		response[i] = model.CreateShortenURLBatchItemResponse{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      s.getURLFromHash(hash),
-		}
-	}
+func (s *useCaseMock) GetNewUserID(ctx context.Context) (string, error) {
+	return s.repo.GetNewUserID(ctx)
+}
 
-	return response, nil
+func (s *useCaseMock) DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error {
+	return nil
 }
 
 // Метод собирает нужный контроллер, нужно вызывать в каждой функции.
 // Пока непонятно как правильно инициализировать данные, поэтому пока так.
 func createTestMock() *shortenerController {
 	uc := &useCaseMock{
-		r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
-		storage:        make(map[string]string),
-		letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+		repo: *inmr.NewInMemoryRepo(),
+		// r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
+		// storage:        make(map[string]string),
+		// letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
 	}
-	c := NewShortenerController(uc, nil, &config.Config{})
+	c := NewShortenerController(uc, nil, uc, &config.Config{})
 	return c
 }
 
@@ -355,7 +336,7 @@ func TestGet(t *testing.T) {
 		{urlID: "", url: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96"},
 	}
 	for i, urc := range urlsToCheck {
-		urc.urlID, _ = controller.uc.SaveURL(ctx, urc.url)
+		urc.urlID, _ = controller.uc.SaveURL(ctx, urc.url, "some user id")
 		tests = append(tests, testData{
 			name:    fmt.Sprintf("Positive request #%d", i+1),
 			urlData: urc,
@@ -393,4 +374,100 @@ func TestGet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandlerAPIUserURLsGET(t *testing.T) {
+	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+	apiRoute := "/api/user/urls"
+	unauthorizedTestName := "Unauthorized"
+
+	// какой результат хотим получить
+	type want struct {
+		code        int
+		contentType string
+	}
+	tests := []struct {
+		name string
+		want want
+	}{
+		{
+			name: unauthorizedTestName,
+			want: want{
+				code:        http.StatusUnauthorized,
+				contentType: "",
+			},
+		},
+		{
+			name: "Get content",
+			want: want{
+				code:        http.StatusOK,
+				contentType: "application/json",
+			},
+		},
+	}
+
+	// создаем cookie jar для сохранения cookies между запросами
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	httpClient := resty.
+		New().
+		SetBaseURL(srv.URL).
+		SetCookieJar(jar)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res, err := httpClient.R().Get(srv.URL + apiRoute)
+			require.NoError(t, err)
+			assert.Equal(t, test.want.code, res.StatusCode())
+			if test.want.contentType != "" {
+				assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
+			}
+
+			// если неавторизованный тест, то пробуем добавить URL для пользователя
+			if test.name == unauthorizedTestName {
+				req := httpClient.
+					R().
+					SetBody("https://music.yandex.ru/home")
+				resp, err := req.Post("/")
+				assert.NoError(t, err, "Ошибка при попытке сделать запрос для сокращения URL")
+				shortenURL := string(resp.Body())
+				assert.Equalf(t, http.StatusCreated, resp.StatusCode(),
+					"Несоответствие статус кода ответа ожидаемому в хендлере '%s %s'", req.Method, req.URL)
+
+				_, urlParseErr := url.Parse(shortenURL)
+				assert.NoErrorf(t, urlParseErr,
+					"Невозможно распарсить полученный сокращенный URL - %s : %s", shortenURL, err,
+				)
+			}
+		})
+	}
+}
+
+func TestHandlerAPIUserURLsDELETE(t *testing.T) {
+	controller := createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv := httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+	apiRoute := "/api/user/urls"
+
+	httpClient := resty.
+		New().
+		SetBaseURL(srv.URL)
+	request := []string{
+		"https://angular.io",
+		"https://www.postgresqltutorial.com",
+	}
+	res, err := httpClient.
+		R().
+		SetBody(request).
+		Delete(srv.URL + apiRoute)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusAccepted, res.StatusCode())
 }

@@ -6,32 +6,40 @@ import (
 	"net/http"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
-	"github.com/KartoonYoko/go-url-shortener/internal/model"
+	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 	"github.com/go-chi/chi/v5"
 )
 
 type useCaseShortener interface {
-	GetURLByID(ctx context.Context, id string) (string, error)
-	SaveURL(ctx context.Context, url string) (string, error)
+	GetURLByID(ctx context.Context, urlID string) (string, error)
+	SaveURL(ctx context.Context, url string, userID string) (string, error)
 	SaveURLsBatch(ctx context.Context,
-		request []model.CreateShortenURLBatchItemRequest) ([]model.CreateShortenURLBatchItemResponse, error)
+		request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error)
+	GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error)
+	DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error
 }
 
 type useCasePinger interface {
 	Ping(ctx context.Context) error
 }
 
+type useCaseAuther interface {
+	GetNewUserID(ctx context.Context) (string, error)
+}
+
 type shortenerController struct {
 	uc     useCaseShortener
 	ucPing useCasePinger
+	ucAuth useCaseAuther
 	router *chi.Mux
 	conf   *config.Config
 }
 
-func NewShortenerController(uc useCaseShortener, ucPing useCasePinger,
+func NewShortenerController(uc useCaseShortener, ucPing useCasePinger, ucAuth useCaseAuther,
 	conf *config.Config) *shortenerController {
 	c := &shortenerController{
 		uc:     uc,
+		ucAuth: ucAuth,
 		ucPing: ucPing,
 		conf:   conf,
 	}
@@ -40,6 +48,7 @@ func NewShortenerController(uc useCaseShortener, ucPing useCasePinger,
 	// middlewares
 	r.Use(logRequestTimeMiddleware)
 	r.Use(decompressRequestGZIPMiddleware)
+	r.Use(c.authJWTCookieMiddleware)
 	r.Use(compressResponseGZIPMiddleware)
 	r.Use(logResponseInfoMiddleware)
 
@@ -53,14 +62,16 @@ func NewShortenerController(uc useCaseShortener, ucPing useCasePinger,
 }
 
 func routeRoot(r *chi.Mux, c *shortenerController) {
-	r.Get("/{id}", c.get)
-	r.Post("/", c.post)
+	r.Get("/{id}", c.handlerRootGET)
+	r.Post("/", c.handlerRootPOST)
 }
 
 func routeAPI(r *chi.Mux, c *shortenerController) {
 	apiRouter := chi.NewRouter()
-	apiRouter.Post("/shorten", c.postCreateShorten)
-	apiRouter.Post("/shorten/batch", c.postCreateShortenBatch)
+	apiRouter.Post("/shorten", c.handlerAPIShortenPOST)
+	apiRouter.Post("/shorten/batch", c.handlerAPIShortenBatchPOST)
+	apiRouter.Get("/user/urls", c.handlerAPIUserURLsGET)
+	apiRouter.Delete("/user/urls", c.handlerAPIUserURLsDELETE)
 
 	r.Mount("/api", apiRouter)
 }

@@ -1,11 +1,12 @@
-package shortener
+package repository
 
 import (
 	"errors"
 	"fmt"
 )
 
-var ErrNotFoundKey = errors.New("service: key not found")
+var ErrNotFoundKey = errors.New("repository: key not found")
+var ErrURLDeleted = errors.New("repository: url was removed")
 
 type URLAlreadyExistsError struct {
 	URL string // URL, который уже существует в базе

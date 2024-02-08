@@ -9,7 +9,10 @@ import (
 	"github.com/KartoonYoko/go-url-shortener/config"
 	"github.com/KartoonYoko/go-url-shortener/internal/controller/http"
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
-	repository "github.com/KartoonYoko/go-url-shortener/internal/repository/shortener"
+	fileRepo "github.com/KartoonYoko/go-url-shortener/internal/repository/filerepo"
+	inmrRepo "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
+	pgsqlRepo "github.com/KartoonYoko/go-url-shortener/internal/repository/psgsqlrepo"
+	usecaseAuth "github.com/KartoonYoko/go-url-shortener/internal/usecase/auth"
 	usecasePinger "github.com/KartoonYoko/go-url-shortener/internal/usecase/ping"
 	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
 
@@ -20,6 +23,7 @@ import (
 type ShortenerRepoCloser interface {
 	usecaseShortener.ShortenerRepo
 	usecasePinger.PingRepo
+	usecaseAuth.AuthRepo
 	io.Closer
 }
 
@@ -43,9 +47,10 @@ func Run() {
 	// usecase'ы
 	serviceShortener := usecaseShortener.New(repo, conf.BaseURLAddress)
 	servicePinger := usecasePinger.NewPingUseCase(repo)
+	serviceAuth := usecaseAuth.NewAuthUseCase(repo)
 
 	// контроллеры
-	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, conf)
+	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, serviceAuth, conf)
 
 	shortenerController.Serve()
 }
@@ -57,7 +62,7 @@ func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, err
 			return nil, err
 		}
 
-		repo, err := repository.NewPsgsqlRepo(ctx, db)
+		repo, err := pgsqlRepo.NewPsgsqlRepo(ctx, db)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +71,7 @@ func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, err
 	}
 
 	if conf.FileStoragePath != "" {
-		fileRepo, err := repository.NewFileRepo(conf.FileStoragePath)
+		fileRepo, err := fileRepo.NewFileRepo(conf.FileStoragePath)
 		if err != nil {
 			return nil, err
 		}
@@ -74,5 +79,5 @@ func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, err
 		return fileRepo, nil
 	}
 
-	return repository.NewInMemoryRepo(), nil
+	return inmrRepo.NewInMemoryRepo(), nil
 }
