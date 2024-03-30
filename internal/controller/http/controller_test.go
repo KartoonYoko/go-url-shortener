@@ -471,3 +471,8 @@ func TestHandlerAPIUserURLsDELETE(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, res.StatusCode())
 }
+
+func BenchmarkHandlerAPIUserURLsGET(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+	}
+}
