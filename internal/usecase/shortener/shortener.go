@@ -53,7 +53,7 @@ func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, e
 		if errors.Is(err, repository.ErrURLDeleted) {
 			return "", ErrURLDeleted
 		}
-		logger.Log.Error("get url error", zap.Error(err))
+		logger.Log.Error("usecase.shortener: get url by id error", zap.String("URL_ID", id), zap.Error(err))
 		return "", err
 	}
 	return url, nil

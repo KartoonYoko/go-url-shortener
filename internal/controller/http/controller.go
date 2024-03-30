@@ -2,12 +2,15 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
+	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type useCaseShortener interface {
@@ -46,13 +49,16 @@ func NewShortenerController(uc useCaseShortener, ucPing useCasePinger, ucAuth us
 	r := chi.NewRouter()
 
 	// middlewares
+	r.Use(middleware.Logger)
 	r.Use(logRequestTimeMiddleware)
-	r.Use(decompressRequestGZIPMiddleware)
+	r.Use(middleware.Compress(5)) // замена стандартного компрессора на компрессор из пакета chi
+	// r.Use(decompressRequestGZIPMiddleware)
 	r.Use(c.authJWTCookieMiddleware)
-	r.Use(compressResponseGZIPMiddleware)
+	// r.Use(compressResponseGZIPMiddleware)
 	r.Use(logResponseInfoMiddleware)
 
 	// routes
+	r.Mount("/debug", middleware.Profiler())
 	routeRoot(r, c)
 	routeAPI(r, c)
 	routePing(r, c)
@@ -62,6 +68,7 @@ func NewShortenerController(uc useCaseShortener, ucPing useCasePinger, ucAuth us
 }
 
 func routeRoot(r *chi.Mux, c *shortenerController) {
+	r.Get("/favicon.ico", c.handlerFaviconGET)
 	r.Get("/{id}", c.handlerRootGET)
 	r.Post("/", c.handlerRootPOST)
 }
@@ -84,6 +91,7 @@ func routePing(r *chi.Mux, c *shortenerController) {
 }
 
 func (c *shortenerController) Serve() {
+	logger.Log.Info(fmt.Sprintf("server serve on %s", c.conf.BootstrapNetAddress))
 	err := http.ListenAndServe(c.conf.BootstrapNetAddress, c.router)
 	if err != http.ErrServerClosed {
 		log.Fatal(err)

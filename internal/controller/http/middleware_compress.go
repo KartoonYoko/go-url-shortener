@@ -2,11 +2,13 @@ package http
 
 import (
 	"compress/gzip"
+	// gzip "github.com/klauspost/pgzip"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 type compressWriter struct {
@@ -74,8 +76,17 @@ func (c *compressWriter) Close() error {
 	return nil
 }
 
+// skipResponseGZIPCompress определяет нужно ли пропустить сжатие
+func skipResponseGZIPCompress(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, "/debug")
+}
+
 func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if skipResponseGZIPCompress(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		supportsGzip := false
 		for _, v := range r.Header.Values("Accept-Encoding") {
 			if strings.Contains(v, "gzip") {
@@ -91,7 +102,7 @@ func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
 
 		rw, err := newCompressWriter(w)
 		if err != nil {
-			logger.Log.Sugar().Errorln(err)
+			logger.Log.Sugar().Errorln("http.compressResponseGZIPMiddleware", zap.Error(err))
 			io.WriteString(w, err.Error())
 			return
 		}
