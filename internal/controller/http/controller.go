@@ -51,10 +51,9 @@ func NewShortenerController(uc useCaseShortener, ucPing useCasePinger, ucAuth us
 	// middlewares
 	r.Use(middleware.Logger)
 	r.Use(logRequestTimeMiddleware)
-	r.Use(middleware.Compress(5)) // замена стандартного компрессора на компрессор из пакета chi
-	// r.Use(decompressRequestGZIPMiddleware)
+	r.Use(decompressRequestGZIPMiddleware)
 	r.Use(c.authJWTCookieMiddleware)
-	// r.Use(compressResponseGZIPMiddleware)
+	r.Use(compressResponseGZIPMiddleware)
 	r.Use(logResponseInfoMiddleware)
 
 	// routes

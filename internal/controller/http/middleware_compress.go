@@ -2,7 +2,6 @@ package http
 
 import (
 	"compress/gzip"
-	// gzip "github.com/klauspost/pgzip"
 	"io"
 	"net/http"
 	"strings"
@@ -19,7 +18,8 @@ type compressWriter struct {
 }
 
 func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
-	cw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	// изменим алгортим сжатия, чтобы сверить alloc_space профилировщиком
+	cw, err := gzip.NewWriterLevel(w, gzip.DefaultCompression)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
 }
 
 func (c *compressWriter) Write(b []byte) (int, error) {
-	logger.Log.Sugar().Infoln("compress body by gzip")
+	logger.Log.Info("compress body by gzip")
 
 	if c.shouldCompress {
 		return c.cw.Write(b)
