@@ -52,7 +52,7 @@ func Run() {
 	// контроллеры
 	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, serviceAuth, conf)
 
-	shortenerController.Serve()
+	shortenerController.Serve(ctx)
 }
 
 func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, error) {
