@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
@@ -99,35 +95,35 @@ func routePing(r *chi.Mux, c *shortenerController) {
 
 // Serve запускает http сервер
 func (c *shortenerController) Serve(ctx context.Context) {
-	server := &http.Server{Addr: c.conf.BootstrapNetAddress, Handler: c.router}
+	// server := &http.Server{Addr: c.conf.BootstrapNetAddress, Handler: c.router}
 
-	// Server run context
-	serverCtx, serverStopCtx := context.WithCancel(ctx)
+	// // Server run context
+	// serverCtx, serverStopCtx := context.WithCancel(ctx)
 
-	// Listen for syscall signals for process to interrupt/quit
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	go func() {
-		<-sig
+	// // Listen for syscall signals for process to interrupt/quit
+	// sig := make(chan os.Signal, 1)
+	// signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// go func() {
+	// 	<-sig
 
-		// Shutdown signal with grace period of 30 seconds
-		shutdownCtx, cancel := context.WithTimeout(serverCtx, 30*time.Second)
-		defer cancel()
+	// 	// Shutdown signal with grace period of 30 seconds
+	// 	shutdownCtx, cancel := context.WithTimeout(serverCtx, 30*time.Second)
+	// 	defer cancel()
 
-		go func() {
-			<-shutdownCtx.Done()
-			if shutdownCtx.Err() == context.DeadlineExceeded {
-				log.Fatal("graceful shutdown timed out.. forcing exit.")
-			}
-		}()
+	// 	go func() {
+	// 		<-shutdownCtx.Done()
+	// 		if shutdownCtx.Err() == context.DeadlineExceeded {
+	// 			log.Fatal("graceful shutdown timed out.. forcing exit.")
+	// 		}
+	// 	}()
 
-		// Trigger graceful shutdown
-		err := server.Shutdown(shutdownCtx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		serverStopCtx()
-	}()
+	// 	// Trigger graceful shutdown
+	// 	err := server.Shutdown(shutdownCtx)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	serverStopCtx()
+	// }()
 
 	// run server
 	logger.Log.Info(fmt.Sprintf("server serve on %s", c.conf.BootstrapNetAddress))
@@ -137,5 +133,5 @@ func (c *shortenerController) Serve(ctx context.Context) {
 	}
 
 	// Wait for server context to be stopped
-	<-serverCtx.Done()
+	// <-serverCtx.Done()
 }

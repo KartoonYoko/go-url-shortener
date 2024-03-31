@@ -484,7 +484,6 @@ func Example() {
 
 	uc := &useCaseMock{
 		repo: *inmr.NewInMemoryRepo(),
-		// 
 		// r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
 		// storage:        make(map[string]string),
 		// letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
