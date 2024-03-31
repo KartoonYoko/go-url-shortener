@@ -114,7 +114,7 @@ func (s *InMemoryRepo) SaveURLsBatch(ctx context.Context,
 	return response, nil
 }
 
-// GetNewUserID вернёт новый уникальны ID 
+// GetNewUserID вернёт новый уникальны ID
 func (s *InMemoryRepo) GetNewUserID(ctx context.Context) (string, error) {
 	id := uuid.New()
 	return id.String(), nil

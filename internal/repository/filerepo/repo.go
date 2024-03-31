@@ -94,7 +94,7 @@ func (s *fileRepo) Ping(ctx context.Context) error {
 // SaveURLsBatch сохраняет множество URL'ов
 func (s *fileRepo) SaveURLsBatch(
 	ctx context.Context,
-	request []model.CreateShortenURLBatchItemRequest, 
+	request []model.CreateShortenURLBatchItemRequest,
 	userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
 	for _, v := range request {
