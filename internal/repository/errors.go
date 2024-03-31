@@ -25,6 +25,7 @@ func NewURLAlreadyExistsError(id string, url string) *URLAlreadyExistsError {
 	}
 }
 
+// Error релизует интерфейс error
 func (e *URLAlreadyExistsError) Error() string {
 	return fmt.Sprintf("url %s already exists", e.URL)
 }

@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Логгер приложения
 var Log *zap.Logger = zap.NewNop()
 
 // Initialize инициализирует логгер с необходимым уровнем логирования

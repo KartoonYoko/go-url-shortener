@@ -25,6 +25,7 @@ type InMemoryRepo struct {
 	r       *rand.Rand
 }
 
+// NewInMemoryRepo инициализирует inmermory хранилище
 func NewInMemoryRepo() *InMemoryRepo {
 	r := rand.New(rand.NewSource(time.Now().UnixMilli()))
 	s := make(map[string]urlDataItem)
@@ -34,6 +35,7 @@ func NewInMemoryRepo() *InMemoryRepo {
 	}
 }
 
+// UpdateURLsDeletedFlag пометит URL'ы удалёнными
 func (s *InMemoryRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error {
 	return errors.New("not implemented")
 }
@@ -60,6 +62,7 @@ func (s *InMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (
 	return hash, nil
 }
 
+// GetURLByID вернёт URL по ID
 func (s *InMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	res, ok := s.storage[id]
 
@@ -70,6 +73,7 @@ func (s *InMemoryRepo) GetURLByID(ctx context.Context, id string) (string, error
 	return res.url, nil
 }
 
+// GetUserURLs вернёт все URL'ы пользователя
 func (s *InMemoryRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	response := make([]model.GetUserURLsItemResponse, 0)
 	for urlID, data := range s.storage {
@@ -86,10 +90,12 @@ func (s *InMemoryRepo) GetUserURLs(ctx context.Context, userID string) ([]model.
 	return response, nil
 }
 
+// Ping реализует интерфейс Pinger
 func (s *InMemoryRepo) Ping(ctx context.Context) error {
 	return nil
 }
 
+// SaveURLsBatch сохранит множество URL'ов пачкой
 func (s *InMemoryRepo) SaveURLsBatch(ctx context.Context,
 	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response := make([]model.CreateShortenURLBatchItemResponse, 0, len(request))
@@ -108,11 +114,13 @@ func (s *InMemoryRepo) SaveURLsBatch(ctx context.Context,
 	return response, nil
 }
 
+// GetNewUserID вернёт новый уникальны ID 
 func (s *InMemoryRepo) GetNewUserID(ctx context.Context) (string, error) {
 	id := uuid.New()
 	return id.String(), nil
 }
 
+// Close релизует Closer
 func (s *InMemoryRepo) Close() error {
 	return nil
 }

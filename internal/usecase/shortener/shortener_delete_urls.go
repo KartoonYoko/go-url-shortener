@@ -7,6 +7,7 @@ import (
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 )
 
+// DeleteURLs удаляет URL'ы
 func (s *shortenerUsecase) DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error {
 	modelToUpdateCh := fanIn(ctx, fanOut(ctx, generator(ctx, urlsIDs), 10)...)
 	return s.repository.UpdateURLsDeletedFlag(ctx, userID, modelToUpdateCh)

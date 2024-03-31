@@ -28,6 +28,7 @@ type fileRepo struct {
 	file         *os.File
 }
 
+// Конструктор для хранилища-файла
 func NewFileRepo(fileName string) (*fileRepo, error) {
 	repo := &fileRepo{
 		repo:         *inmr.NewInMemoryRepo(),
@@ -69,25 +70,32 @@ func (s *fileRepo) SaveURL(ctx context.Context, url string, userID string) (stri
 	return hash, nil
 }
 
+// GetURLByID вернёт URL по его ID
 func (s *fileRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	return s.repo.GetURLByID(ctx, id)
 }
 
+// GetUserURLs вернёт все URL'ы, которые пользователь создавал когда-либо
 func (s *fileRepo) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	return s.repo.GetUserURLs(ctx, userID)
 }
 
+// Close закрывает файл
 func (s *fileRepo) Close() error {
 	s.repo.Close()
 	return s.file.Close()
 }
 
+// Ping релизует интерфейс Pinger
 func (s *fileRepo) Ping(ctx context.Context) error {
 	return s.repo.Ping(ctx)
 }
 
-func (s *fileRepo) SaveURLsBatch(ctx context.Context,
-	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
+// SaveURLsBatch сохраняет множество URL'ов
+func (s *fileRepo) SaveURLsBatch(
+	ctx context.Context,
+	request []model.CreateShortenURLBatchItemRequest, 
+	userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response := make([]model.CreateShortenURLBatchItemResponse, len(request))
 	for _, v := range request {
 		hash, err := s.SaveURL(ctx, v.OriginalURL, userID)
@@ -104,10 +112,12 @@ func (s *fileRepo) SaveURLsBatch(ctx context.Context,
 	return response, nil
 }
 
+// GetNewUserID сгенерировать новый ID для пользователя
 func (s *fileRepo) GetNewUserID(ctx context.Context) (string, error) {
 	return s.repo.GetNewUserID(ctx)
 }
 
+// UpdateURLsDeletedFlag пометит указанные URL'ы удалёнными
 func (s *fileRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error {
 	return s.repo.UpdateURLsDeletedFlag(ctx, userID, modelsCh)
 }

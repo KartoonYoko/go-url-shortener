@@ -21,6 +21,7 @@ type (
 	}
 )
 
+// Write пишет данные в тело, попутно записывая информацию о размере
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
@@ -28,6 +29,7 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
+// WriteHeader отправляет ответ с указанным статусным кодом
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)

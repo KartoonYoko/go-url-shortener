@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// GetNewUserID вернёт новый уникальный ID пользователя
 func (s *psgsqlRepo) GetNewUserID(ctx context.Context) (string, error) {
 	id := uuid.New()
 	_, err := s.conn.ExecContext(ctx, "INSERT INTO users (id) VALUES($1)", id)

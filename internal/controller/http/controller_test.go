@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
@@ -476,20 +475,4 @@ func TestHandlerAPIUserURLsDELETE(t *testing.T) {
 func BenchmarkHandlerAPIUserURLsGET(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 	}
-}
-
-func Example() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	uc := &useCaseMock{
-		repo: *inmr.NewInMemoryRepo(),
-		// r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
-		// storage:        make(map[string]string),
-		// letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
-	}
-	c := NewShortenerController(uc, nil, uc, &config.Config{})
-
-	c.Serve(ctx)
 }

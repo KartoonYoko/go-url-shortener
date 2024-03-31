@@ -61,6 +61,7 @@ func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
 	return tx.Commit()
 }
 
+// Close релизует Closer
 func (s *psgsqlRepo) Close() error {
 	s.conn.Close()
 	return nil

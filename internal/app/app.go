@@ -20,6 +20,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// ShortenerRepoCloser интерфейс, объединяющий в себе все необходимые репозитории
 type ShortenerRepoCloser interface {
 	usecaseShortener.ShortenerRepo
 	usecasePinger.PingRepo
@@ -27,6 +28,7 @@ type ShortenerRepoCloser interface {
 	io.Closer
 }
 
+// Run запускает приложение
 func Run() {
 	ctx := context.TODO()
 

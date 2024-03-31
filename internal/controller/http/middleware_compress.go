@@ -74,6 +74,7 @@ func (c *compressWriter) Header() http.Header {
 	return c.rw.Header()
 }
 
+// Close закрывает writer для сжатия, если сжатие было
 func (c *compressWriter) Close() error {
 	if c.shouldCompress {
 		return c.cw.Close()
@@ -139,6 +140,7 @@ func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
+// Close закрывает reader
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err
