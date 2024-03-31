@@ -37,8 +37,12 @@ type shortenerController struct {
 	router *chi.Mux
 	conf   *config.Config
 }
-
-func NewShortenerController(uc useCaseShortener, ucPing useCasePinger, ucAuth useCaseAuther,
+ 
+// NewShortenerController собирает http контроллер, определяя endpoint'ы, middleware'ы
+func NewShortenerController(
+	uc useCaseShortener, 
+	ucPing useCasePinger, 
+	ucAuth useCaseAuther,
 	conf *config.Config) *shortenerController {
 	c := &shortenerController{
 		uc:     uc,
@@ -89,6 +93,7 @@ func routePing(r *chi.Mux, c *shortenerController) {
 	r.Mount("/ping", pingRouter)
 }
 
+// Serve запускает http сервер
 func (c *shortenerController) Serve() {
 	logger.Log.Info(fmt.Sprintf("server serve on %s", c.conf.BootstrapNetAddress))
 	err := http.ListenAndServe(c.conf.BootstrapNetAddress, c.router)

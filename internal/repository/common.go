@@ -15,6 +15,7 @@ import (
 // 	return string(b)
 // }
 
+// GenerateURLUniqueHash генерирует уникальный хэш для переданной строки
 func GenerateURLUniqueHash(h hash.Hash, url string) (string, error) {
 	h.Reset()
 	_, err := h.Write([]byte(url))

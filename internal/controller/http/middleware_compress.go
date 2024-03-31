@@ -32,6 +32,9 @@ func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
 	}, nil
 }
 
+// Write пишет в тело запроса сжатые данные,
+// если заголовок Content-Type содержит один из следующих типов
+// "application/json", "text/html"
 func (c *compressWriter) Write(b []byte) (int, error) {
 	logger.Log.Info("compress body by gzip")
 
@@ -42,6 +45,8 @@ func (c *compressWriter) Write(b []byte) (int, error) {
 	return c.rw.Write(b)
 }
 
+// WriteHeader устанавливает статус ответа, также устанавливает заголовок Content-Encoding в
+// gzip, если сжатие будет производиться
 func (c *compressWriter) WriteHeader(statusCode int) {
 	shouldCompress := false
 	for _, v := range c.rw.Header().Values("content-type") {
@@ -64,6 +69,7 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 	c.rw.WriteHeader(statusCode)
 }
 
+// Header тоже что и http.ResponseWriter.Header()
 func (c *compressWriter) Header() http.Header {
 	return c.rw.Header()
 }
@@ -128,6 +134,7 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read читате сжатые данные
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
