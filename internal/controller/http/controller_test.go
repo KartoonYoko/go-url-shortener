@@ -471,5 +471,3 @@ func TestHandlerAPIUserURLsDELETE(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, res.StatusCode())
 }
-
-
