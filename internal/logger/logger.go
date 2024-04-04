@@ -1,11 +1,16 @@
+/*
+Логер всего приложения
+*/
 package logger
 
 import (
 	"go.uber.org/zap"
 )
 
+// Логгер приложения
 var Log *zap.Logger = zap.NewNop()
 
+// Initialize инициализирует логгер с необходимым уровнем логирования
 func Initialize(level string) error {
 	// преобразуем текстовый уровень логирования в zap.AtomicLevel
 	lvl, err := zap.ParseAtomicLevel(level)

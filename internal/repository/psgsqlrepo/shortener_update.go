@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// UpdateURLsDeletedFlag обновит поле deleted_flag согласно модели modelsCh
 func (s *psgsqlRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string, modelsCh <-chan model.UpdateURLDeletedFlag) error {
 	type argType struct {
 		UserID string   `db:"user_id"`

@@ -200,7 +200,7 @@ func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *ht
 	}
 	if len(response) == 0 {
 		w.WriteHeader(http.StatusNoContent)
-		return 	
+		return
 	}
 
 	responseJSON, err := json.Marshal(response)
@@ -208,7 +208,7 @@ func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *ht
 		http.Error(w, "Can not serialize response", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(responseJSON))

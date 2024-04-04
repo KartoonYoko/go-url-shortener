@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// Конфигурация приложения
 type Config struct {
 	// Адрес запуска сервера
 	BootstrapNetAddress string
@@ -16,6 +17,7 @@ type Config struct {
 	DatabaseDsn string
 }
 
+// New собирает конфигурацию из флагов командной строки, переменных среды
 func New() *Config {
 	a := flag.String("a", ":8080", "Flag responsible for http server start")
 	b := flag.String("b", "http://localhost:8080", "Flag responsible for base addres of shorted url")

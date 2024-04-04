@@ -7,27 +7,28 @@ import (
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 )
 
+// DeleteURLs удаляет URL'ы
 func (s *shortenerUsecase) DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error {
 	modelToUpdateCh := fanIn(ctx, fanOut(ctx, generator(ctx, urlsIDs), 10)...)
 	return s.repository.UpdateURLsDeletedFlag(ctx, userID, modelToUpdateCh)
 }
 
 func generator(ctx context.Context, input []string) chan string {
-    inputCh := make(chan string)
+	inputCh := make(chan string)
 
-    go func() {
-        defer close(inputCh)
+	go func() {
+		defer close(inputCh)
 
-        for _, data := range input {
-            select {
-            case <-ctx.Done():
-                return
-            case inputCh <- data:
-            }
-        }
-    }()
+		for _, data := range input {
+			select {
+			case <-ctx.Done():
+				return
+			case inputCh <- data:
+			}
+		}
+	}()
 
-    return inputCh
+	return inputCh
 }
 
 // createModelToUpdateFlag создаёт модель обновления флага из ID'шника URL'а
@@ -72,7 +73,7 @@ func fanIn(ctx context.Context, resultChs ...chan model.UpdateURLDeletedFlag) ch
 	var wg sync.WaitGroup
 	for _, ch := range resultChs {
 		chClosure := ch
-		
+
 		wg.Add(1)
 
 		go func() {

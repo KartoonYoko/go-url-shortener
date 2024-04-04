@@ -21,6 +21,7 @@ type (
 	}
 )
 
+// Write пишет данные в тело, попутно записывая информацию о размере
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
@@ -28,6 +29,7 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
+// WriteHeader отправляет ответ с указанным статусным кодом
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)
@@ -41,6 +43,7 @@ func logRequestTimeMiddleware(next http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		logger.Log.Sugar().Infoln(
+			"request_log",
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"duration", duration,
@@ -51,7 +54,7 @@ func logRequestTimeMiddleware(next http.Handler) http.Handler {
 func logResponseInfoMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		responseData := &responseData{
-			status: 0,
+			status: 200,
 			size:   0,
 		}
 
@@ -62,7 +65,8 @@ func logResponseInfoMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(&lw, r)
 
 		logger.Log.Sugar().Infoln(
-			"status", responseData.status,
+			"response_log",
+			"status_code", responseData.status,
 			"size", responseData.size,
 		)
 	})

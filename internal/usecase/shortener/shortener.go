@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// ShortenerRepo интерфейс хранилища
 type ShortenerRepo interface {
 	SaveURL(ctx context.Context, url string, userID string) (string, error)
 	SaveURLsBatch(ctx context.Context,
@@ -25,6 +26,7 @@ type shortenerUsecase struct {
 	baseURLAddress string // Базовый адрес результирующего сокращенного URL
 }
 
+// New инициализирует shortenerUsecase
 func New(repo ShortenerRepo, baseURLAddress string) *shortenerUsecase {
 	return &shortenerUsecase{
 		repository:     repo,
@@ -47,18 +49,20 @@ func (s *shortenerUsecase) SaveURL(ctx context.Context, hash string, userID stri
 	return s.getShorURL(hash), nil
 }
 
+// GetURLByID вернёт URL
 func (s *shortenerUsecase) GetURLByID(ctx context.Context, id string) (string, error) {
 	url, err := s.repository.GetURLByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrURLDeleted) {
 			return "", ErrURLDeleted
 		}
-		logger.Log.Error("get url error", zap.Error(err))
+		logger.Log.Error("usecase.shortener: get url by id error", zap.String("URL_ID", id), zap.Error(err))
 		return "", err
 	}
 	return url, nil
 }
 
+// GetUserURLs вернёт URL'ы пользователя
 func (s *shortenerUsecase) GetUserURLs(ctx context.Context, userID string) ([]model.GetUserURLsItemResponse, error) {
 	res, err := s.repository.GetUserURLs(ctx, userID)
 	if err != nil {
@@ -72,6 +76,7 @@ func (s *shortenerUsecase) GetUserURLs(ctx context.Context, userID string) ([]mo
 	return res, nil
 }
 
+// SaveURLsBatch сохранит URL'ы пачкой
 func (s *shortenerUsecase) SaveURLsBatch(ctx context.Context,
 	request []model.CreateShortenURLBatchItemRequest, userID string) ([]model.CreateShortenURLBatchItemResponse, error) {
 	response, err := s.repository.SaveURLsBatch(ctx, request, userID)

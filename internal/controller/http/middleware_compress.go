@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 type compressWriter struct {
@@ -17,7 +18,8 @@ type compressWriter struct {
 }
 
 func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
-	cw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	// изменим алгортим сжатия, чтобы сверить alloc_space профилировщиком
+	cw, err := gzip.NewWriterLevel(w, gzip.DefaultCompression)
 	if err != nil {
 		return nil, err
 	}
@@ -30,8 +32,11 @@ func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
 	}, nil
 }
 
+// Write пишет в тело запроса сжатые данные,
+// если заголовок Content-Type содержит один из следующих типов
+// "application/json", "text/html"
 func (c *compressWriter) Write(b []byte) (int, error) {
-	logger.Log.Sugar().Infoln("compress body by gzip")
+	logger.Log.Info("compress body by gzip")
 
 	if c.shouldCompress {
 		return c.cw.Write(b)
@@ -40,6 +45,8 @@ func (c *compressWriter) Write(b []byte) (int, error) {
 	return c.rw.Write(b)
 }
 
+// WriteHeader устанавливает статус ответа, также устанавливает заголовок Content-Encoding в
+// gzip, если сжатие будет производиться
 func (c *compressWriter) WriteHeader(statusCode int) {
 	shouldCompress := false
 	for _, v := range c.rw.Header().Values("content-type") {
@@ -62,10 +69,12 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 	c.rw.WriteHeader(statusCode)
 }
 
+// Header тоже что и http.ResponseWriter.Header()
 func (c *compressWriter) Header() http.Header {
 	return c.rw.Header()
 }
 
+// Close закрывает writer для сжатия, если сжатие было
 func (c *compressWriter) Close() error {
 	if c.shouldCompress {
 		return c.cw.Close()
@@ -74,8 +83,17 @@ func (c *compressWriter) Close() error {
 	return nil
 }
 
+// skipResponseGZIPCompress определяет нужно ли пропустить сжатие
+func skipResponseGZIPCompress(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, "/debug")
+}
+
 func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if skipResponseGZIPCompress(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		supportsGzip := false
 		for _, v := range r.Header.Values("Accept-Encoding") {
 			if strings.Contains(v, "gzip") {
@@ -91,7 +109,7 @@ func compressResponseGZIPMiddleware(next http.Handler) http.Handler {
 
 		rw, err := newCompressWriter(w)
 		if err != nil {
-			logger.Log.Sugar().Errorln(err)
+			logger.Log.Sugar().Errorln("http.compressResponseGZIPMiddleware", zap.Error(err))
 			io.WriteString(w, err.Error())
 			return
 		}
@@ -117,10 +135,12 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read читате сжатые данные
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
+// Close закрывает reader
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err

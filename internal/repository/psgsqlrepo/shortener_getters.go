@@ -7,6 +7,7 @@ import (
 	reoppsitory "github.com/KartoonYoko/go-url-shortener/internal/repository"
 )
 
+// GetURLByID вернёт URL по его ID
 func (s *psgsqlRepo) GetURLByID(ctx context.Context, id string) (string, error) {
 	type queryResult struct {
 		URL       string `db:"url"`

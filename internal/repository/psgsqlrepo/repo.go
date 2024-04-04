@@ -10,6 +10,7 @@ type psgsqlRepo struct {
 	conn *sqlx.DB
 }
 
+// NewPsgsqlRepo инициализирует хранилище для работы с БД
 func NewPsgsqlRepo(ctx context.Context, db *sqlx.DB) (*psgsqlRepo, error) {
 	repo := &psgsqlRepo{
 		conn: db,
@@ -60,6 +61,7 @@ func (s *psgsqlRepo) createSchema(ctx context.Context) (err error) {
 	return tx.Commit()
 }
 
+// Close релизует Closer
 func (s *psgsqlRepo) Close() error {
 	s.conn.Close()
 	return nil
