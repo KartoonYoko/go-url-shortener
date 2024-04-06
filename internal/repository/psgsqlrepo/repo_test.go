@@ -42,6 +42,7 @@ func (r *psgsqlRepo) clean(ctx context.Context) error {
 	return err
 }
 
+// SetupSuite инициализирует PostgresTestSuite
 func (ts *PostgresTestSuite) SetupSuite() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -72,6 +73,7 @@ func (ts *PostgresTestSuite) SetupSuite() {
 	ts.T().Logf("stared postgres conteiner")
 }
 
+// TearDownSuite останавливает контейнеры
 func (ts *PostgresTestSuite) TearDownSuite() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -79,14 +81,17 @@ func (ts *PostgresTestSuite) TearDownSuite() {
 	require.NoError(ts.T(), ts.tc.Terminate(ctx))
 }
 
+// SetupTest очищает БД
 func (ts *PostgresTestSuite) SetupTest() {
 	ts.Require().NoError(ts.clean(context.Background()))
 }
 
+// TearDownTest очищает БД
 func (ts *PostgresTestSuite) TearDownTest() {
 	ts.Require().NoError(ts.clean(context.Background()))
 }
 
+// TestPostgresqlRepository входная точка для тестирования
 func TestPostgresqlRepository(t *testing.T) {
 	suite.Run(t, new(PostgresTestSuite))
 }

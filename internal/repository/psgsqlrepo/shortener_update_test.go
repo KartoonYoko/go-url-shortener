@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test_psgsqlRepo_UpdateURLsDeletedFlag тестирует SQL запрос на обновление флага удаления URL
 func (ts *PostgresTestSuite) Test_psgsqlRepo_UpdateURLsDeletedFlag() {
 	ctx := context.Background()
 

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test_psgsqlRepo_GetNewUserID тестирует SQL запрос создания нового пользователя
 func (ts *PostgresTestSuite) Test_psgsqlRepo_GetNewUserID() {
 	ctx := context.Background()
 

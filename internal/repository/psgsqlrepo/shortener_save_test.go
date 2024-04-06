@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test_psgsqlRepo_SaveURL тестирует SQL запрос на вставку URL'a
 func (ts *PostgresTestSuite) Test_psgsqlRepo_SaveURL() {
 	ctx := context.Background()
 
@@ -23,6 +24,7 @@ func (ts *PostgresTestSuite) Test_psgsqlRepo_SaveURL() {
 	require.Equal(ts.T(), someURL, gotURL)
 }
 
+// Test_psgsqlRepo_SaveURLsBatch тестирует SQL запрос на вставку множества URL'ов
 func (ts *PostgresTestSuite) Test_psgsqlRepo_SaveURLsBatch() {
 	ctx := context.Background()
 
