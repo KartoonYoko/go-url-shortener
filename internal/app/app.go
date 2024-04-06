@@ -11,13 +11,10 @@ import (
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	fileRepo "github.com/KartoonYoko/go-url-shortener/internal/repository/filerepo"
 	inmrRepo "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
-	"github.com/KartoonYoko/go-url-shortener/internal/repository/psgsqlrepo"
 	pgsqlRepo "github.com/KartoonYoko/go-url-shortener/internal/repository/psgsqlrepo"
 	usecaseAuth "github.com/KartoonYoko/go-url-shortener/internal/usecase/auth"
 	usecasePinger "github.com/KartoonYoko/go-url-shortener/internal/usecase/ping"
 	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // ShortenerRepoCloser интерфейс, объединяющий в себе все необходимые репозитории
@@ -59,7 +56,7 @@ func Run() {
 
 func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, error) {
 	if conf.DatabaseDsn != "" {
-		db, err := psgsqlrepo.NewSQLxConnection(ctx, conf.DatabaseDsn)
+		db, err := pgsqlRepo.NewSQLxConnection(ctx, conf.DatabaseDsn)
 		if err != nil {
 			return nil, err
 		}
