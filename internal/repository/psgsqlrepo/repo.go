@@ -21,6 +21,5 @@ func NewPsgsqlRepo(ctx context.Context, db *sqlx.DB) (*psgsqlRepo, error) {
 
 // Close релизует Closer
 func (s *psgsqlRepo) Close() error {
-	s.conn.Close()
-	return nil
+	return s.conn.Close()
 }
