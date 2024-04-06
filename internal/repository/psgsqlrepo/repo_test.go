@@ -20,21 +20,21 @@ type PostgresTestSuite struct {
 	tc *tcpostgres.PostgresContainer
 }
 
-func (r *psgsqlRepo) cleanTables(ctx context.Context) error {
+func (s *psgsqlRepo) cleanTables(ctx context.Context) error {
 	query := `DELETE FROM users_shorten_url`
-	_, err := r.conn.ExecContext(ctx, query)
+	_, err := s.conn.ExecContext(ctx, query)
 	if err != nil {
 		return err
 	}
 
 	query = `DELETE FROM users`
-	_, err = r.conn.ExecContext(ctx, query)
+	_, err = s.conn.ExecContext(ctx, query)
 	if err != nil {
 		return err
 	}
 
 	query = `DELETE FROM shorten_url`
-	_, err = r.conn.ExecContext(ctx, query)
+	_, err = s.conn.ExecContext(ctx, query)
 	if err != nil {
 		return err
 	}
