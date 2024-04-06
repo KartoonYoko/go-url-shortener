@@ -20,7 +20,7 @@ type PostgresTestSuite struct {
 	tc *tcpostgres.PostgresContainer
 }
 
-func (r *psgsqlRepo) clean(ctx context.Context) error {
+func (r *psgsqlRepo) cleanTables(ctx context.Context) error {
 	query := `DELETE FROM users_shorten_url`
 	_, err := r.conn.ExecContext(ctx, query)
 	if err != nil {
@@ -83,12 +83,12 @@ func (ts *PostgresTestSuite) TearDownSuite() {
 
 // SetupTest очищает БД
 func (ts *PostgresTestSuite) SetupTest() {
-	ts.Require().NoError(ts.clean(context.Background()))
+	ts.Require().NoError(ts.cleanTables(context.Background()))
 }
 
 // TearDownTest очищает БД
 func (ts *PostgresTestSuite) TearDownTest() {
-	ts.Require().NoError(ts.clean(context.Background()))
+	ts.Require().NoError(ts.cleanTables(context.Background()))
 }
 
 // TestPostgresqlRepository входная точка для тестирования
