@@ -28,7 +28,7 @@ func (e *URLAlreadyExistsError) Error() string {
 	return fmt.Sprintf("url %s already exists", e.URL)
 }
 
-// Unwrap
+// Unwrap для errors.Unwrap
 func (e *URLAlreadyExistsError) Unwrap() error {
 	return e.Err
 }

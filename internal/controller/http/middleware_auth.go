@@ -19,14 +19,14 @@ type Claims struct {
 	UserID string
 }
 
-// тип ключа контекста для middleware аутентификации
+// MiddlewareAuthKey тип ключа контекста для middleware аутентификации
 type MiddlewareAuthKey int
 
 const (
 	keyUserID MiddlewareAuthKey = iota // ключ для ID пользователя
 )
 
-// const TOKEN_EXP = time.Hour * 3
+// SecretKey const TOKEN_EXP = time.Hour * 3
 const SecretKey = "supersecretkey"
 
 // Сервис должен:

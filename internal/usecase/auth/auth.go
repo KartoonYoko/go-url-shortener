@@ -1,8 +1,11 @@
+/*
+Package auth это usecase для работы с аутентификацией пользователя
+*/
 package auth
 
 import "context"
 
-// интерфейс для хранилища
+// AuthRepo интерфейс для хранилища
 type AuthRepo interface {
 	GetNewUserID(ctx context.Context) (string, error)
 }

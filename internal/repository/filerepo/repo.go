@@ -1,3 +1,6 @@
+/*
+Package filerepo релизация хранилища URL'ов в файле
+*/
 package filerepo
 
 import (
@@ -28,7 +31,7 @@ type fileRepo struct {
 	file         *os.File
 }
 
-// Конструктор для хранилища-файла
+// NewFileRepo Конструктор для хранилища-файла
 func NewFileRepo(fileName string) (*fileRepo, error) {
 	repo := &fileRepo{
 		repo:         *inmr.NewInMemoryRepo(),
@@ -49,7 +52,7 @@ func NewFileRepo(fileName string) (*fileRepo, error) {
 	return repo, nil
 }
 
-// сохранит url и вернёт его id'шник
+// SaveURL сохранит url и вернёт его id'шник
 func (s *fileRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
 	hash, err := s.repo.SaveURL(ctx, url, userID)
 	if err != nil {

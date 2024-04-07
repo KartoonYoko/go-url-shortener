@@ -1,3 +1,6 @@
+/*
+Package app предоставляет методы запуска приложения
+*/
 package app
 
 import (

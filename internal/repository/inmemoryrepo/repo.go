@@ -1,3 +1,6 @@
+/*
+Package inmemoryrepo релизация хранилища URL'ов в памяти
+*/
 package inmemoryrepo
 
 import (
@@ -18,7 +21,7 @@ type urlDataItem struct {
 	users map[string]struct{} // пользователи, которые когда-либо формировали этот URL;
 }
 
-// хранилище коротки адресов в памяти
+// InMemoryRepo хранилище коротких адресов в памяти
 type InMemoryRepo struct {
 	// хранилище адресов и их id'шников; ключ - id, значение - информация об URL'е
 	storage map[string]urlDataItem
@@ -40,7 +43,7 @@ func (s *InMemoryRepo) UpdateURLsDeletedFlag(ctx context.Context, userID string,
 	return errors.New("not implemented")
 }
 
-// сохранит url и вернёт его id'шник
+// SaveURL сохранит url и вернёт его id'шник
 func (s *InMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (string, error) {
 	h := sha256.New()
 	hash, err := repoCommon.GenerateURLUniqueHash(h, url)
