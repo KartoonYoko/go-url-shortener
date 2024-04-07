@@ -4,7 +4,7 @@ package shortener
 type CreateShortenURLRequest struct {
 	URL string `json:"url"`
 }
- 
+
 // CreateShortenURLResponse Ответ на запрос создание сокращенного URL'a
 type CreateShortenURLResponse struct {
 	Result string `json:"result"` // сокращенный URL
