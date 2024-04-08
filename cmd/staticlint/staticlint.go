@@ -6,7 +6,7 @@ Package staticlint это статический анализатор соотв
 - не менее одного анализатора остальных классов пакета staticcheck.io;
 - двух или более любых публичных анализаторов на ваш выбор.
 */
-package staticlint
+package main
 
 import (
 	"strings"
@@ -30,16 +30,73 @@ import (
 	"golang.org/x/tools/go/analysis/passes/defers"
 	"golang.org/x/tools/go/analysis/passes/directive"
 	"golang.org/x/tools/go/analysis/passes/errorsas"
+	"golang.org/x/tools/go/analysis/passes/fieldalignment"
+	"golang.org/x/tools/go/analysis/passes/findcall"
 	"golang.org/x/tools/go/analysis/passes/framepointer"
+	"golang.org/x/tools/go/analysis/passes/httpmux"
+	"golang.org/x/tools/go/analysis/passes/httpresponse"
+	"golang.org/x/tools/go/analysis/passes/ifaceassert"
+	"golang.org/x/tools/go/analysis/passes/inspect"
+	"golang.org/x/tools/go/analysis/passes/loopclosure"
+	"golang.org/x/tools/go/analysis/passes/lostcancel"
+	"golang.org/x/tools/go/analysis/passes/nilfunc"
+	"golang.org/x/tools/go/analysis/passes/pkgfact"
 	"golang.org/x/tools/go/analysis/passes/printf"
+	"golang.org/x/tools/go/analysis/passes/reflectvaluecompare"
 	"golang.org/x/tools/go/analysis/passes/shadow"
+	"golang.org/x/tools/go/analysis/passes/shift"
+	"golang.org/x/tools/go/analysis/passes/sigchanyzer"
+	"golang.org/x/tools/go/analysis/passes/slog"
+	"golang.org/x/tools/go/analysis/passes/sortslice"
+	"golang.org/x/tools/go/analysis/passes/stdmethods"
+	"golang.org/x/tools/go/analysis/passes/stdversion"
+	"golang.org/x/tools/go/analysis/passes/stringintconv"
 	"golang.org/x/tools/go/analysis/passes/structtag"
+	"golang.org/x/tools/go/analysis/passes/testinggoroutine"
+	"golang.org/x/tools/go/analysis/passes/tests"
+	"golang.org/x/tools/go/analysis/passes/timeformat"
+	"golang.org/x/tools/go/analysis/passes/unmarshal"
+	"golang.org/x/tools/go/analysis/passes/unreachable"
+	"golang.org/x/tools/go/analysis/passes/unsafeptr"
+	"golang.org/x/tools/go/analysis/passes/unusedresult"
+	"golang.org/x/tools/go/analysis/passes/unusedwrite"
+	"golang.org/x/tools/go/analysis/passes/usesgenerics"
+	"honnef.co/go/tools/analysis/facts/nilness"
 	"honnef.co/go/tools/staticcheck"
+
+	"github.com/KartoonYoko/errcheck/pkg/errcheck"
+	gocriticAnalyzer "github.com/go-critic/go-critic/checkers/analyzer"
 )
 
 func main() {
-	allAnalyzers := []*analysis.Analyzer{
-		// анализаторы пакета golang.org/x/tools/go/analysis/passes
+	allAnalyzers := []*analysis.Analyzer{}
+
+	addAnalysisPasses(allAnalyzers)
+	allAnalyzers = append(allAnalyzers, osexitcheck.OsExitAnalyzer)
+	allAnalyzers = append(allAnalyzers, gocriticAnalyzer.Analyzer)
+	allAnalyzers = append(allAnalyzers, errcheck.ErrCheckAnalyzer)
+
+	checks := map[string]bool{
+		"S1000": true,
+		"S1001": true,
+	}
+	for _, v := range staticcheck.Analyzers {
+		// всех анализаторов класса SA пакета staticcheck.io
+		if strings.HasPrefix(v.Analyzer.Name, "SA") {
+			allAnalyzers = append(allAnalyzers, v.Analyzer)
+		} else if checks[v.Analyzer.Name] {
+			allAnalyzers = append(allAnalyzers, v.Analyzer)
+		}
+	}
+
+	multichecker.Main(
+		allAnalyzers...,
+	)
+}
+
+// addAnalysisPasses добавит анализаторы пакета golang.org/x/tools/go/analysis/passes
+func addAnalysisPasses(allAnalyzers []*analysis.Analyzer) {
+	arr := []*analysis.Analyzer{
 		printf.Analyzer,
 		shadow.Analyzer,
 		structtag.Analyzer,
@@ -60,25 +117,40 @@ func main() {
 		directive.Analyzer,
 		errorsas.Analyzer,
 		framepointer.Analyzer,
+		fieldalignment.Analyzer,
+		findcall.Analyzer,
+		httpmux.Analyzer,
+		httpresponse.Analyzer,
+		ifaceassert.Analyzer,
+		inspect.Analyzer,
+		loopclosure.Analyzer,
+		lostcancel.Analyzer,
+		nilfunc.Analyzer,
+		nilness.Analysis,
+		pkgfact.Analyzer,
+		printf.Analyzer,
+		reflectvaluecompare.Analyzer,
+		shadow.Analyzer,
+		shift.Analyzer,
+		sigchanyzer.Analyzer,
+		slog.Analyzer,
+		sortslice.Analyzer,
+		stdmethods.Analyzer,
+		stdversion.Analyzer,
+		stringintconv.Analyzer,
+		structtag.Analyzer,
+		testinggoroutine.Analyzer,
+		tests.Analyzer,
+		timeformat.Analyzer,
+		unmarshal.Analyzer,
+		unreachable.Analyzer,
+		unsafeptr.Analyzer,
+		unusedresult.Analyzer,
+		unusedwrite.Analyzer,
+		usesgenerics.Analyzer,
 	}
 
-	allAnalyzers = append(allAnalyzers, osexitcheck.OsExitAnalyzer)
-
-	checks := map[string]bool{
-		"S1000": true,
-		"S1001": true,
+	for _, v := range arr {
+		allAnalyzers = append(allAnalyzers, v)
 	}
-
-	for _, v := range staticcheck.Analyzers {
-		// всех анализаторов класса SA пакета staticcheck.io
-		if strings.HasPrefix(v.Analyzer.Name, "SA") {
-			allAnalyzers = append(allAnalyzers, v.Analyzer)
-		} else if checks[v.Analyzer.Name] {
-			allAnalyzers = append(allAnalyzers, v.Analyzer)
-		}
-	}
-
-	multichecker.Main(
-		allAnalyzers...,
-	)
 }
