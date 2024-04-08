@@ -150,7 +150,5 @@ func addAnalysisPasses(allAnalyzers []*analysis.Analyzer) {
 		usesgenerics.Analyzer,
 	}
 
-	for _, v := range arr {
-		allAnalyzers = append(allAnalyzers, v)
-	}
+	allAnalyzers = append(allAnalyzers, arr...)
 }
