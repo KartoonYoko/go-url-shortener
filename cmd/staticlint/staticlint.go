@@ -71,7 +71,7 @@ import (
 func main() {
 	allAnalyzers := []*analysis.Analyzer{}
 
-	addAnalysisPasses(allAnalyzers)
+	allAnalyzers = addAnalysisPasses(allAnalyzers)
 	allAnalyzers = append(allAnalyzers, osexitcheck.OsExitAnalyzer)
 	allAnalyzers = append(allAnalyzers, gocriticAnalyzer.Analyzer)
 	allAnalyzers = append(allAnalyzers, errcheck.ErrCheckAnalyzer)
@@ -95,7 +95,7 @@ func main() {
 }
 
 // addAnalysisPasses добавит анализаторы пакета golang.org/x/tools/go/analysis/passes
-func addAnalysisPasses(allAnalyzers []*analysis.Analyzer) {
+func addAnalysisPasses(allAnalyzers []*analysis.Analyzer) []*analysis.Analyzer {
 	arr := []*analysis.Analyzer{
 		printf.Analyzer,
 		shadow.Analyzer,
@@ -150,5 +150,5 @@ func addAnalysisPasses(allAnalyzers []*analysis.Analyzer) {
 		usesgenerics.Analyzer,
 	}
 
-	allAnalyzers = append(allAnalyzers, arr...)
+	return append(allAnalyzers, arr...)
 }
