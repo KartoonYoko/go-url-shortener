@@ -1,3 +1,6 @@
+/*
+Package config предоставляет конфигурацию приложения
+*/
 package config
 
 import (
@@ -5,7 +8,7 @@ import (
 	"os"
 )
 
-// Конфигурация приложения
+// Config конфигурация приложения
 type Config struct {
 	// Адрес запуска сервера
 	BootstrapNetAddress string

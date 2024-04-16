@@ -1,8 +1,11 @@
+/*
+Package ping это usecase для проверки работы выбранного хранилища
+*/
 package ping
 
 import "context"
 
-// Интерфейс хранилища
+// PingRepo Интерфейс хранилища
 type PingRepo interface {
 	Ping(ctx context.Context) error
 }

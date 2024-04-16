@@ -17,7 +17,7 @@ type URLAlreadyExistsError struct {
 	ID  string // ID url'a
 }
 
-// Конструктор для URLAlreadyExistsError
+// NewURLAlreadyExistsError Конструктор для URLAlreadyExistsError
 func NewURLAlreadyExistsError(id string, url string) *URLAlreadyExistsError {
 	return &URLAlreadyExistsError{
 		URL: url,
