@@ -1,9 +1,17 @@
 package http
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"log"
+	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -131,11 +139,87 @@ func (c *shortenerController) Serve(ctx context.Context) {
 
 	// run server
 	logger.Log.Info(fmt.Sprintf("server serve on %s", c.conf.BootstrapNetAddress))
-	err := server.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+	if c.conf.EnableHTTPS {
+		cert, key, err := createCert()
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = server.ListenAndServeTLS(cert, key)
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	} else {
+		err := server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
 	}
 
 	// Wait for server context to be stopped
 	<-serverCtx.Done()
+}
+
+func createCert() (certPath string, keyPath string, err error) {
+	// создаём шаблон сертификата
+	cert := &x509.Certificate{
+		// указываем уникальный номер сертификата
+		SerialNumber: big.NewInt(1658),
+		// заполняем базовую информацию о владельце сертификата
+		Subject: pkix.Name{
+			Organization: []string{"localhost"},
+			Country:      []string{"RU"},
+		},
+		// разрешаем использование сертификата для 127.0.0.1 и ::1
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		// сертификат верен, начиная со времени создания
+		NotBefore: time.Now(),
+		// время жизни сертификата — 10 лет
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		// устанавливаем использование ключа для цифровой подписи,
+		// а также клиентской и серверной авторизации
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:    x509.KeyUsageDigitalSignature,
+	}
+
+	// создаём новый приватный RSA-ключ длиной 4096 бит
+	// обратите внимание, что для генерации ключа и сертификата
+	// используется rand.Reader в качестве источника случайных данных
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// создаём сертификат x.509
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// кодируем сертификат и ключ в формате PEM, который
+	// используется для хранения и обмена криптографическими ключами
+	var certPEM bytes.Buffer
+	pem.Encode(&certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	var privateKeyPEM bytes.Buffer
+	pem.Encode(&privateKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	err = os.WriteFile("cert.pem", certPEM.Bytes(), 0644)
+	if err != nil {
+		return "", "", err
+	}
+	err = os.WriteFile("key.pem", privateKeyPEM.Bytes(), 0600)
+	if err != nil {
+		return "", "", err
+	}
+
+	certPath = "cert.pem"
+	keyPath = "key.pem"
+	return certPath, keyPath, nil
 }

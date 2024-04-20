@@ -37,7 +37,10 @@ func Run() {
 		log.Fatal(fmt.Errorf("logger init error: %w", err))
 	}
 	defer logger.Log.Sync()
-	conf := config.New()
+	conf, err := config.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// репозитории
 	repo, err := initRepo(ctx, *conf)

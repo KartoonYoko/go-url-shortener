@@ -6,6 +6,7 @@ package config
 import (
 	"flag"
 	"os"
+	"strconv"
 )
 
 // Config конфигурация приложения
@@ -18,21 +19,24 @@ type Config struct {
 	FileStoragePath string
 	// строка подключения к БД
 	DatabaseDsn string
+	EnableHTTPS bool
 }
 
 // New собирает конфигурацию из флагов командной строки, переменных среды
-func New() *Config {
+func New() (*Config, error) {
 	a := flag.String("a", ":8080", "Flag responsible for http server start")
 	b := flag.String("b", "http://localhost:8080", "Flag responsible for base addres of shorted url")
 	f := flag.String("f", "", "Path of short url's file")
-	dbDsn := flag.String("d", "", "Database connection string")
+	d := flag.String("d", "", "Database connection string")
+	s := flag.Bool("s", false, "Enable HTTPS ")
 	flag.Parse()
 
 	c := &Config{
 		BootstrapNetAddress: *a,
 		BaseURLAddress:      *b,
 		FileStoragePath:     *f,
-		DatabaseDsn:         *dbDsn,
+		DatabaseDsn:         *d,
+		EnableHTTPS:         *s,
 	}
 
 	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
@@ -51,5 +55,13 @@ func New() *Config {
 		c.DatabaseDsn = envDatabaseDsn
 	}
 
-	return c
+	if envEnableHTTPS := os.Getenv("ENABLE_HTTPS"); envEnableHTTPS != "" {
+		value, err := strconv.ParseBool(envEnableHTTPS)
+		if err != nil {
+			return nil, err
+		}
+		c.EnableHTTPS = value
+	}
+
+	return c, nil
 }
