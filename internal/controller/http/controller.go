@@ -212,14 +212,14 @@ func createCert() (certPath string, keyPath string, err error) {
 
 	err = os.WriteFile("cert.pem", certPEM.Bytes(), 0644)
 	if err != nil {
-		return "", "", err
+		return
 	}
 	err = os.WriteFile("key.pem", privateKeyPEM.Bytes(), 0600)
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	certPath = "cert.pem"
 	keyPath = "key.pem"
-	return certPath, keyPath, nil
+	return
 }
