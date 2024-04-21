@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 )
@@ -34,11 +35,11 @@ type Config struct {
 }
 
 type configFileJSON struct {
-	ServerAddress   string `json:"server_address"`    // аналог переменной окружения SERVER_ADDRESS или флага -a
-	BaseURL         string `json:"base_url"`          // аналог переменной окружения BASE_URL или флага -b
-	FileStoragePath string `json:"file_storage_path"` // аналог переменной окружения FILE_STORAGE_PATH или флага -f
-	DatabaseDSN     string `json:"database_dsn"`      // аналог переменной окружения DATABASE_DSN или флага -d
-	EnableHTTPS     bool   `json:"enable_https"`      // аналог переменной окружения ENABLE_HTTPS или флага -s
+	ServerAddress   *string `json:"server_address"`    // аналог переменной окружения SERVER_ADDRESS или флага -a
+	BaseURL         *string `json:"base_url"`          // аналог переменной окружения BASE_URL или флага -b
+	FileStoragePath *string `json:"file_storage_path"` // аналог переменной окружения FILE_STORAGE_PATH или флага -f
+	DatabaseDSN     *string `json:"database_dsn"`      // аналог переменной окружения DATABASE_DSN или флага -d
+	EnableHTTPS     *bool   `json:"enable_https"`      // аналог переменной окружения ENABLE_HTTPS или флага -s
 }
 
 // New собирает конфигурацию из флагов командной строки, переменных среды
@@ -67,37 +68,47 @@ func New() (*Config, error) {
 func (c *Config) setFromEnv() error {
 	if !c.wasSetBootstrapNetAddress {
 		envValue, ok := os.LookupEnv("SERVER_ADDRESS")
-		c.BootstrapNetAddress = envValue
 		c.wasSetBootstrapNetAddress = ok
+		if ok {
+			c.BootstrapNetAddress = envValue
+		}
 	}
 
 	if !c.wasSetBaseURLAddress {
 		envValue, ok := os.LookupEnv("BASE_URL")
-		c.BaseURLAddress = envValue
 		c.wasSetBaseURLAddress = ok
+		if ok {
+			c.BaseURLAddress = envValue
+		}
 	}
 
 	if !c.wasSetFileStoragePath {
 		envValue, ok := os.LookupEnv("FILE_STORAGE_PATH")
-		c.FileStoragePath = envValue
 		c.wasSetFileStoragePath = ok
+		if ok {
+			c.FileStoragePath = envValue
+		}
 	}
 
 	if !c.wasSetDatabaseDsn {
 		envValue, ok := os.LookupEnv("DATABASE_DSN")
-		c.DatabaseDsn = envValue
 		c.wasSetDatabaseDsn = ok
+		if ok {
+			c.DatabaseDsn = envValue
+		}
 	}
 
 	if !c.wasSetEnableHTTPS {
 		envValue, ok := os.LookupEnv("ENABLE_HTTPS")
-
-		value, err := strconv.ParseBool(envValue)
-		if err != nil {
-			return err
-		}
-		c.EnableHTTPS = value
 		c.wasSetEnableHTTPS = ok
+
+		if ok {
+			value, err := strconv.ParseBool(envValue)
+			if err != nil {
+				return err
+			}
+			c.EnableHTTPS = value
+		}
 	}
 
 	return nil
@@ -141,7 +152,7 @@ func (c *Config) setFromConfigFile() error {
 	defer f.Close()
 
 	var b []byte
-	_, err = f.Read(b)
+	b, err = io.ReadAll(f)
 	if err != nil {
 		return fmt.Errorf("can not read config file: %w", err)
 	}
@@ -152,24 +163,24 @@ func (c *Config) setFromConfigFile() error {
 		return fmt.Errorf("can not unmarshal config file: %w", err)
 	}
 
-	if !c.wasSetBaseURLAddress {
-		c.BaseURLAddress = j.BaseURL
+	if !c.wasSetBaseURLAddress && j.BaseURL != nil {
+		c.BaseURLAddress = *j.BaseURL
 		c.wasSetBaseURLAddress = true
 	}
-	if !c.wasSetBootstrapNetAddress {
-		c.BootstrapNetAddress = j.ServerAddress
+	if !c.wasSetBootstrapNetAddress && j.ServerAddress != nil {
+		c.BootstrapNetAddress = *j.ServerAddress
 		c.wasSetBootstrapNetAddress = true
 	}
-	if !c.wasSetFileStoragePath {
-		c.FileStoragePath = j.FileStoragePath
+	if !c.wasSetFileStoragePath && j.FileStoragePath != nil {
+		c.FileStoragePath = *j.FileStoragePath
 		c.wasSetFileStoragePath = true
 	}
-	if !c.wasSetDatabaseDsn {
-		c.DatabaseDsn = j.DatabaseDSN
+	if !c.wasSetDatabaseDsn && j.DatabaseDSN != nil {
+		c.DatabaseDsn = *j.DatabaseDSN
 		c.wasSetDatabaseDsn = true
 	}
-	if !c.wasSetEnableHTTPS {
-		c.EnableHTTPS = j.EnableHTTPS
+	if !c.wasSetEnableHTTPS && j.EnableHTTPS != nil {
+		c.EnableHTTPS = *j.EnableHTTPS
 		c.wasSetEnableHTTPS = true
 	}
 	return nil
