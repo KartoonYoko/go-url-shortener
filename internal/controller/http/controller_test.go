@@ -13,22 +13,62 @@ import (
 
 	"github.com/KartoonYoko/go-url-shortener/config"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	"github.com/KartoonYoko/go-url-shortener/internal/repository"
 	inmr "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
+	ucShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	controller *shortenerController
+	srv        *httptest.Server
+	ucMock     *useCaseMock
+)
+
+func TestMain(m *testing.M) {
+	controller = createTestMock()
+	// запускаем тестовый сервер, будет выбран первый свободный порт
+	srv = httptest.NewServer(controller.router)
+	// останавливаем сервер после завершения теста
+	defer srv.Close()
+	controller.conf.BaseURLAddress = srv.URL
+
+	m.Run()
+}
+
+func TearDownTest(t *testing.T) {
+	require.NoError(t, ucMock.Clear(context.Background()))
+}
+
+// createTestMock собирает контроллер
+// Пока непонятно как правильно инициализировать данные, поэтому пока так.
+func createTestMock() *shortenerController {
+	ucMock = &useCaseMock{
+		repo:           *inmr.NewInMemoryRepo(),
+		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
+	}
+	c := NewShortenerController(ucMock, ucMock, ucMock, &config.Config{})
+	return c
+}
+
 type useCaseMock struct {
-	repo inmr.InMemoryRepo
-	// storage        map[string]string
-	// r              *rand.Rand
-	// letterRunes    []rune
+	repo           inmr.InMemoryRepo
 	baseAddressURL string
 }
 
 func (s *useCaseMock) SaveURL(ctx context.Context, url string, userID string) (string, error) {
-	return s.repo.SaveURL(ctx, url, userID)
+	id, err := s.repo.SaveURL(ctx, url, userID)
+	if err != nil {
+		var repoErrURLAlreadyExists *repository.URLAlreadyExistsError
+		if errors.As(err, &repoErrURLAlreadyExists) {
+			return "", ucShortener.NewURLAlreadyExistsError(repoErrURLAlreadyExists.ID, repoErrURLAlreadyExists.URL, err)
+		}
+
+		return "", err
+	}
+	return id, nil
 }
 
 func (s *useCaseMock) GetURLByID(ctx context.Context, id string) (string, error) {
@@ -52,28 +92,15 @@ func (s *useCaseMock) DeleteURLs(ctx context.Context, userID string, urlsIDs []s
 	return nil
 }
 
-// Метод собирает нужный контроллер, нужно вызывать в каждой функции.
-// Пока непонятно как правильно инициализировать данные, поэтому пока так.
-func createTestMock() *shortenerController {
-	uc := &useCaseMock{
-		repo: *inmr.NewInMemoryRepo(),
-		// r:              rand.New(rand.NewSource(time.Now().UnixMilli())),
-		// storage:        make(map[string]string),
-		// letterRunes:    []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
-	}
-	c := NewShortenerController(uc, nil, uc, &config.Config{})
-	return c
+func (s *useCaseMock) Clear(ctx context.Context) error {
+	return s.repo.Clear()
+}
+
+func (s *useCaseMock) Ping(ctx context.Context) error {
+	return s.repo.Ping(ctx)
 }
 
 func TestPost(t *testing.T) {
-	controller := createTestMock()
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(controller.router)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
-	controller.conf.BaseURLAddress = srv.URL
-
 	// какой результат хотим получить
 	type want struct {
 		code          int
@@ -106,6 +133,15 @@ func TestPost(t *testing.T) {
 				contentType:   "text/plain",
 			},
 		},
+		{
+			name: "Already exists",
+			url:  "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
+			want: want{
+				code:          http.StatusConflict,
+				responseRegex: urlRegex,
+				contentType:   "text/plain",
+			},
+		},
 	}
 
 	httpClient := resty.New()
@@ -127,15 +163,11 @@ func TestPost(t *testing.T) {
 			}
 		})
 	}
+
+	TearDownTest(t)
 }
 
 func TestPostAPIShorten(t *testing.T) {
-	controller := createTestMock()
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(controller.router)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
-	controller.conf.BaseURLAddress = srv.URL
 	apiRoute := "/api/shorten"
 
 	// какой результат хотим получить
@@ -159,6 +191,17 @@ func TestPostAPIShorten(t *testing.T) {
 			},
 			want: want{
 				code:          http.StatusCreated,
+				responseRegex: urlRegex,
+				contentType:   "application/json",
+			},
+		},
+		{
+			name: "Already exists",
+			request: model.CreateShortenURLRequest{
+				URL: "https://gist.github.com/brydavis/0c7da92bd508195744708eeb2b54ac96",
+			},
+			want: want{
+				code:          http.StatusConflict,
 				responseRegex: urlRegex,
 				contentType:   "application/json",
 			},
@@ -195,15 +238,11 @@ func TestPostAPIShorten(t *testing.T) {
 			}
 		})
 	}
+
+	TearDownTest(t)
 }
 
 func TestPostAPIShortenBatch(t *testing.T) {
-	controller := createTestMock()
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(controller.router)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
-	controller.conf.BaseURLAddress = srv.URL
 	apiRoute := "/api/shorten/batch"
 
 	// какой результат хотим получить
@@ -292,17 +331,12 @@ func TestPostAPIShortenBatch(t *testing.T) {
 			}
 		})
 	}
+
+	TearDownTest(t)
 }
 
 func TestGet(t *testing.T) {
 	ctx := context.TODO()
-
-	controller := createTestMock()
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(controller.router)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
-	controller.conf.BaseURLAddress = srv.URL
 
 	type want struct {
 		code int
@@ -374,15 +408,11 @@ func TestGet(t *testing.T) {
 			}
 		})
 	}
+
+	TearDownTest(t)
 }
 
 func TestHandlerAPIUserURLsGET(t *testing.T) {
-	controller := createTestMock()
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(controller.router)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
-	controller.conf.BaseURLAddress = srv.URL
 	apiRoute := "/api/user/urls"
 	unauthorizedTestName := "Unauthorized"
 
@@ -446,15 +476,11 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 			}
 		})
 	}
+
+	TearDownTest(t)
 }
 
 func TestHandlerAPIUserURLsDELETE(t *testing.T) {
-	controller := createTestMock()
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(controller.router)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
-	controller.conf.BaseURLAddress = srv.URL
 	apiRoute := "/api/user/urls"
 
 	httpClient := resty.
@@ -470,4 +496,6 @@ func TestHandlerAPIUserURLsDELETE(t *testing.T) {
 		Delete(srv.URL + apiRoute)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, res.StatusCode())
+
+	TearDownTest(t)
 }
