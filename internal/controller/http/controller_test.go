@@ -421,9 +421,9 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 		contentType string
 	}
 	tests := []struct {
-		name string
-		prepare func (t *testing.T, httpClient *resty.Client)
-		want want
+		name    string
+		prepare func(t *testing.T, httpClient *resty.Client)
+		want    want
 	}{
 		{
 			name: "No content",
@@ -434,7 +434,7 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 		},
 		{
 			name: "Get content",
-			prepare: func (t *testing.T, httpClient *resty.Client) {
+			prepare: func(t *testing.T, httpClient *resty.Client) {
 				createURL(t, "https://pkg.go.dev/regexp#example-Match", httpClient)
 			},
 			want: want{
