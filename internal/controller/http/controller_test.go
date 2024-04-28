@@ -414,7 +414,6 @@ func TestGet(t *testing.T) {
 
 func TestHandlerAPIUserURLsGET(t *testing.T) {
 	apiRoute := "/api/user/urls"
-	unauthorizedTestName := "Unauthorized"
 
 	// какой результат хотим получить
 	type want struct {
@@ -423,17 +422,21 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 	}
 	tests := []struct {
 		name string
+		prepare func (t *testing.T, httpClient *resty.Client)
 		want want
 	}{
 		{
-			name: unauthorizedTestName,
+			name: "No content",
 			want: want{
-				code:        http.StatusUnauthorized,
+				code:        http.StatusNoContent,
 				contentType: "",
 			},
 		},
 		{
 			name: "Get content",
+			prepare: func (t *testing.T, httpClient *resty.Client) {
+				createURL(t, "https://pkg.go.dev/regexp#example-Match", httpClient)
+			},
 			want: want{
 				code:        http.StatusOK,
 				contentType: "application/json",
@@ -449,30 +452,18 @@ func TestHandlerAPIUserURLsGET(t *testing.T) {
 		SetBaseURL(srv.URL).
 		SetCookieJar(jar)
 
+	// авторизируемся
+	auth(t, jar)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.prepare != nil {
+				test.prepare(t, httpClient)
+			}
 			res, err := httpClient.R().Get(srv.URL + apiRoute)
 			require.NoError(t, err)
 			assert.Equal(t, test.want.code, res.StatusCode())
 			if test.want.contentType != "" {
-				assert.Contains(t, res.Header().Get("Content-Type"), test.want.contentType)
-			}
-
-			// если неавторизованный тест, то пробуем добавить URL для пользователя
-			if test.name == unauthorizedTestName {
-				req := httpClient.
-					R().
-					SetBody("https://music.yandex.ru/home")
-				resp, err := req.Post("/")
-				assert.NoError(t, err, "Ошибка при попытке сделать запрос для сокращения URL")
-				shortenURL := string(resp.Body())
-				assert.Equalf(t, http.StatusCreated, resp.StatusCode(),
-					"Несоответствие статус кода ответа ожидаемому в хендлере '%s %s'", req.Method, req.URL)
-
-				_, urlParseErr := url.Parse(shortenURL)
-				assert.NoErrorf(t, urlParseErr,
-					"Невозможно распарсить полученный сокращенный URL - %s : %s", shortenURL, err,
-				)
+				assert.Contains(t, test.want.contentType, res.Header().Get("Content-Type"))
 			}
 		})
 	}
@@ -498,4 +489,30 @@ func TestHandlerAPIUserURLsDELETE(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, res.StatusCode())
 
 	TearDownTest(t)
+}
+
+func createURL(t *testing.T, url string, httpClient *resty.Client) {
+	req := httpClient.
+		R().
+		SetBody(url)
+	resp, err := req.Post("/")
+	assert.NoError(t, err, "Ошибка при попытке сделать запрос для сокращения URL")
+
+	assert.Equalf(t, http.StatusCreated, resp.StatusCode(),
+		"Несоответствие статус кода ответа ожидаемому в хендлере '%s %s'", req.Method, req.URL)
+
+}
+
+func auth(t *testing.T, jar *cookiejar.Jar) {
+	userID, err := ucMock.GetNewUserID(context.Background())
+	require.NoError(t, err)
+
+	pURL, err := url.Parse(srv.URL)
+	require.NoError(t, err)
+
+	jwt, err := buildJWTString(userID)
+	require.NoError(t, err)
+	bearerStr := fmt.Sprintf("Bearer %s", jwt)
+	cookie := createAuthCookie(bearerStr)
+	jar.SetCookies(pURL, []*http.Cookie{&cookie})
 }
