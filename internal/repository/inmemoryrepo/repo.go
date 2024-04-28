@@ -143,6 +143,7 @@ func (s *InMemoryRepo) Close() error {
 	return nil
 }
 
+// Clear удалит все данные из хранилища
 func (s *InMemoryRepo) Clear() error {
 	for k := range s.storage {
 		delete(s.storage, k)
