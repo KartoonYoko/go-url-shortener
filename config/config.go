@@ -34,6 +34,7 @@ type Config struct {
 	wasSetFileStoragePath     bool
 	wasSetDatabaseDsn         bool
 	wasSetEnableHTTPS         bool
+	wasSetTrustedSubnets      bool
 }
 
 type configFileJSON struct {
@@ -114,6 +115,14 @@ func (c *Config) setFromEnv() error {
 		}
 	}
 
+	if !c.wasSetTrustedSubnets {
+		envValue, ok := os.LookupEnv("TRUSTED_SUBNET")
+		c.wasSetTrustedSubnets = ok
+		if ok {
+			c.TrustedSubnets = envValue
+		}
+	}
+
 	return nil
 }
 
@@ -124,6 +133,7 @@ func (c *Config) setFromFlags() error {
 	f := flag.String("f", "", "Path of short url's file")
 	d := flag.String("d", "", "Database connection string")
 	cf := flag.String("c", "", "Config file path")
+	t := flag.String("t", "", "Trusted subnets. Used to authorize access to several endpoints.")
 	s := flag.Bool("s", false, "Enable TLS")
 	flag.Parse()
 
@@ -133,12 +143,14 @@ func (c *Config) setFromFlags() error {
 	c.DatabaseDsn = *d
 	c.EnableHTTPS = *s
 	c.ConfigFileName = *cf
+	c.TrustedSubnets = *t
 
 	c.wasSetBaseURLAddress = isFlagPassed("b")
 	c.wasSetBootstrapNetAddress = isFlagPassed("a")
 	c.wasSetDatabaseDsn = isFlagPassed("d")
 	c.wasSetEnableHTTPS = isFlagPassed("s")
 	c.wasSetFileStoragePath = isFlagPassed("f")
+	c.wasSetTrustedSubnets = isFlagPassed("t")
 
 	return nil
 }
@@ -185,6 +197,10 @@ func (c *Config) setFromConfigFile() error {
 	if !c.wasSetEnableHTTPS && j.EnableHTTPS != nil {
 		c.EnableHTTPS = *j.EnableHTTPS
 		c.wasSetEnableHTTPS = true
+	}
+	if !c.wasSetTrustedSubnets && j.TrustedSubnets != nil {
+		c.TrustedSubnets = *j.TrustedSubnets
+		c.wasSetTrustedSubnets = true
 	}
 	return nil
 }
