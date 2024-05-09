@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -106,7 +107,7 @@ func routePing(r *chi.Mux, c *shortenerController) {
 }
 
 // Serve запускает http сервер
-func (c *shortenerController) Serve(ctx context.Context) {
+func (c *shortenerController) Serve(ctx context.Context) error {
 	server := &http.Server{Addr: c.conf.BootstrapNetAddress, Handler: c.router}
 
 	// Server run context
@@ -142,21 +143,23 @@ func (c *shortenerController) Serve(ctx context.Context) {
 	if c.conf.EnableHTTPS {
 		cert, key, err := createCert()
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("create cert error: %w", err)
 		}
 		err = server.ListenAndServeTLS(cert, key)
-		if err != nil && err != http.ErrServerClosed {
-			log.Fatal(err)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("server serve error: %w", err)
 		}
 	} else {
 		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			log.Fatal(err)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("server serve error: %w", err)
 		}
 	}
 
 	// Wait for server context to be stopped
 	<-serverCtx.Done()
+
+	return nil
 }
 
 func createCert() (certPath string, keyPath string, err error) {
@@ -187,13 +190,13 @@ func createCert() (certPath string, keyPath string, err error) {
 	// используется rand.Reader в качестве источника случайных данных
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 
 	// создаём сертификат x.509
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 
 	// кодируем сертификат и ключ в формате PEM, который
