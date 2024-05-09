@@ -19,10 +19,6 @@ import (
 // и возвращает ответ с кодом 201 и сокращённым URL как text/plain.
 func (c *shortenerController) handlerRootPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST requests are allowed!", http.StatusBadRequest)
-		return
-	}
 
 	// - получить из тела запроса строку
 	body, err := io.ReadAll(r.Body)
@@ -38,7 +34,7 @@ func (c *shortenerController) handlerRootPOST(w http.ResponseWriter, r *http.Req
 
 	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
-		http.Error(w, "Empty body not allowed", http.StatusBadRequest)
+		http.Error(w, "Server error", http.StatusBadRequest)
 		return
 	}
 

@@ -99,8 +99,14 @@ func createJWTAndSaveAsCookie(w http.ResponseWriter, userID string) error {
 		return err
 	}
 	bearerStr := fmt.Sprintf("Bearer %s", jwt)
+	cookie := createAuthCookie(bearerStr)
 
-	cookie := http.Cookie{
+	http.SetCookie(w, &cookie)
+	return nil
+}
+
+func createAuthCookie(bearerStr string) http.Cookie {
+	return http.Cookie{
 		Name:     "Authorization",
 		Value:    bearerStr,
 		Path:     "/",
@@ -109,9 +115,6 @@ func createJWTAndSaveAsCookie(w http.ResponseWriter, userID string) error {
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	}
-
-	http.SetCookie(w, &cookie)
-	return nil
 }
 
 // buildJWTString создаёт токен и возвращает его в виде строки.

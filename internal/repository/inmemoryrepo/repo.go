@@ -51,6 +51,12 @@ func (s *InMemoryRepo) SaveURL(ctx context.Context, url string, userID string) (
 		return "", err
 	}
 
+	// если уже существует
+	if _, ok := s.storage[hash]; ok {
+		err = repoCommon.NewURLAlreadyExistsError(hash, url)
+		return "", err
+	}
+
 	data := urlDataItem{
 		url:   url,
 		users: map[string]struct{}{},
@@ -105,6 +111,15 @@ func (s *InMemoryRepo) SaveURLsBatch(ctx context.Context,
 	for _, v := range request {
 		hash, err := s.SaveURL(ctx, v.OriginalURL, userID)
 		if err != nil {
+			var errAlreadyExists *repoCommon.URLAlreadyExistsError
+			if errors.As(err, &errAlreadyExists) {
+				response = append(response, model.CreateShortenURLBatchItemResponse{
+					CorrelationID: v.CorrelationID,
+					ShortURL:      errAlreadyExists.ID,
+				})
+
+				continue
+			}
 			return nil, err
 		}
 
@@ -125,5 +140,14 @@ func (s *InMemoryRepo) GetNewUserID(ctx context.Context) (string, error) {
 
 // Close релизует Closer
 func (s *InMemoryRepo) Close() error {
+	return nil
+}
+
+// Clear удалит все данные из хранилища
+func (s *InMemoryRepo) Clear() error {
+	for k := range s.storage {
+		delete(s.storage, k)
+	}
+
 	return nil
 }
