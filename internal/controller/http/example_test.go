@@ -13,7 +13,7 @@ func Example() {
 	defer cancel()
 
 	uc := &useCaseMock{
-		repo: *inmr.NewInMemoryRepo(),
+		repo:           *inmr.NewInMemoryRepo(),
 		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
 	}
 	c := NewShortenerController(uc, nil, uc, nil, &config.Config{})

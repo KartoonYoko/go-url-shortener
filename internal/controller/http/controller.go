@@ -111,7 +111,7 @@ func routeAPI(r *chi.Mux, c *shortenerController) {
 
 	apiRouter.Group(func(r chi.Router) {
 		r.Use(c.guardIPMiddleware)
-		
+
 		r.Get("/internal/stats", c.handlerStatsGET)
 	})
 
