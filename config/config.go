@@ -26,6 +26,8 @@ type Config struct {
 	EnableHTTPS bool
 	// Путь к файлу конфигурации; флаг c
 	ConfigFileName string
+	// Разрешенные IP-адреса для некоторых ручек; флаг t
+	TrustedSubnets string
 
 	wasSetBootstrapNetAddress bool
 	wasSetBaseURLAddress      bool
@@ -40,6 +42,7 @@ type configFileJSON struct {
 	FileStoragePath *string `json:"file_storage_path"` // аналог переменной окружения FILE_STORAGE_PATH или флага -f
 	DatabaseDSN     *string `json:"database_dsn"`      // аналог переменной окружения DATABASE_DSN или флага -d
 	EnableHTTPS     *bool   `json:"enable_https"`      // аналог переменной окружения ENABLE_HTTPS или флага -s
+	TrustedSubnets  *string `json:"trusted_subnet"`    // аналог переменной окружения TRUSTED_SUBNETS или флага -t
 }
 
 // New собирает конфигурацию из флагов командной строки, переменных среды

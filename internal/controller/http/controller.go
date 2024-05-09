@@ -22,6 +22,7 @@ import (
 	"github.com/KartoonYoko/go-url-shortener/config"
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	modelStats "github.com/KartoonYoko/go-url-shortener/internal/model/stats"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -43,12 +44,17 @@ type useCaseAuther interface {
 	GetNewUserID(ctx context.Context) (string, error)
 }
 
+type useCaseStats interface {
+	GetStats(ctx context.Context) (*modelStats.StatsResponse, error)
+}
+
 type shortenerController struct {
-	uc     useCaseShortener
-	ucPing useCasePinger
-	ucAuth useCaseAuther
-	router *chi.Mux
-	conf   *config.Config
+	uc      useCaseShortener
+	ucPing  useCasePinger
+	ucAuth  useCaseAuther
+	ucStats useCaseStats
+	router  *chi.Mux
+	conf    *config.Config
 }
 
 // NewShortenerController собирает http контроллер, определяя endpoint'ы, middleware'ы
@@ -56,17 +62,18 @@ func NewShortenerController(
 	uc useCaseShortener,
 	ucPing useCasePinger,
 	ucAuth useCaseAuther,
+	ucStats useCaseStats,
 	conf *config.Config) *shortenerController {
 	c := &shortenerController{
-		uc:     uc,
-		ucAuth: ucAuth,
-		ucPing: ucPing,
-		conf:   conf,
+		uc:      uc,
+		ucAuth:  ucAuth,
+		ucPing:  ucPing,
+		ucStats: ucStats,
+		conf:    conf,
 	}
 	r := chi.NewRouter()
 
 	// middlewares
-	r.Use(middleware.Logger)
 	r.Use(logRequestTimeMiddleware)
 	r.Use(decompressRequestGZIPMiddleware)
 	r.Use(c.authJWTCookieMiddleware)
@@ -91,10 +98,22 @@ func routeRoot(r *chi.Mux, c *shortenerController) {
 
 func routeAPI(r *chi.Mux, c *shortenerController) {
 	apiRouter := chi.NewRouter()
-	apiRouter.Post("/shorten", c.handlerAPIShortenPOST)
-	apiRouter.Post("/shorten/batch", c.handlerAPIShortenBatchPOST)
-	apiRouter.Get("/user/urls", c.handlerAPIUserURLsGET)
-	apiRouter.Delete("/user/urls", c.handlerAPIUserURLsDELETE)
+
+	apiRouter.Group(func(r chi.Router) {
+		r.Post("/shorten", c.handlerAPIShortenPOST)
+		r.Post("/shorten/batch", c.handlerAPIShortenBatchPOST)
+	})
+
+	apiRouter.Group(func(r chi.Router) {
+		r.Get("/user/urls", c.handlerAPIUserURLsGET)
+		r.Delete("/user/urls", c.handlerAPIUserURLsDELETE)
+	})
+
+	apiRouter.Group(func(r chi.Router) {
+		r.Use(c.guardIPMiddleware)
+		
+		r.Get("/internal/stats", c.handlerStatsGET)
+	})
 
 	r.Mount("/api", apiRouter)
 }
@@ -139,7 +158,7 @@ func (c *shortenerController) Serve(ctx context.Context) error {
 	}()
 
 	// run server
-	logger.Log.Info(fmt.Sprintf("server serve on %s", c.conf.BootstrapNetAddress))
+	logger.Log.Info(fmt.Sprintf("server serve on %s", server.Addr))
 	if c.conf.EnableHTTPS {
 		cert, key, err := createCert()
 		if err != nil {

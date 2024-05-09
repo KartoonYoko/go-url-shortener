@@ -18,6 +18,8 @@ import (
 	usecaseAuth "github.com/KartoonYoko/go-url-shortener/internal/usecase/auth"
 	usecasePinger "github.com/KartoonYoko/go-url-shortener/internal/usecase/ping"
 	usecaseShortener "github.com/KartoonYoko/go-url-shortener/internal/usecase/shortener"
+	usecaseStats "github.com/KartoonYoko/go-url-shortener/internal/usecase/stats"
+	"go.uber.org/zap"
 )
 
 // ShortenerRepoCloser интерфейс, объединяющий в себе все необходимые репозитории
@@ -25,6 +27,7 @@ type ShortenerRepoCloser interface {
 	usecaseShortener.ShortenerRepo
 	usecasePinger.PingRepo
 	usecaseAuth.AuthRepo
+	usecaseStats.StatsRepo
 	io.Closer
 }
 
@@ -41,13 +44,15 @@ func Run() {
 	// конфигурация
 	conf, err := config.New()
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Error("config init error: ", zap.Error(err))
+		return
 	}
 
 	// репозитории
 	repo, err := initRepo(ctx, *conf)
 	if err != nil {
-		log.Fatal(fmt.Errorf("repository init error: %w", err))
+		logger.Log.Error("repo init error: %s", zap.Error(err))
+		return
 	}
 	defer repo.Close()
 
@@ -55,11 +60,21 @@ func Run() {
 	serviceShortener := usecaseShortener.New(repo, conf.BaseURLAddress)
 	servicePinger := usecasePinger.NewPingUseCase(repo)
 	serviceAuth := usecaseAuth.NewAuthUseCase(repo)
+	serviceStats := usecaseStats.New(repo)
 
 	// контроллеры
-	shortenerController := http.NewShortenerController(serviceShortener, servicePinger, serviceAuth, conf)
+	shortenerController := http.NewShortenerController(
+		serviceShortener,
+		servicePinger,
+		serviceAuth,
+		serviceStats,
+		conf)
 
-	shortenerController.Serve(ctx)
+	err = shortenerController.Serve(ctx)
+	if err != nil {
+		logger.Log.Error("serve error: %s", zap.Error(err))
+		return
+	}
 }
 
 func initRepo(ctx context.Context, conf config.Config) (ShortenerRepoCloser, error) {

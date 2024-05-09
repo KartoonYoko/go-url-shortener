@@ -49,7 +49,7 @@ func createTestMock() *shortenerController {
 		repo:           *inmr.NewInMemoryRepo(),
 		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах
 	}
-	c := NewShortenerController(ucMock, ucMock, ucMock, &config.Config{})
+	c := NewShortenerController(ucMock, ucMock, ucMock, nil, &config.Config{})
 	return c
 }
 
