@@ -28,22 +28,26 @@ type Config struct {
 	ConfigFileName string
 	// Разрешенные IP-адреса для некоторых ручек; флаг t
 	TrustedSubnets string
+	// Адрес запуска gRPC сервера; флаг ga
+	BootstrapAddressgRPC string
 
-	wasSetBootstrapNetAddress bool
-	wasSetBaseURLAddress      bool
-	wasSetFileStoragePath     bool
-	wasSetDatabaseDsn         bool
-	wasSetEnableHTTPS         bool
-	wasSetTrustedSubnets      bool
+	wasSetBootstrapNetAddress  bool
+	wasSetBaseURLAddress       bool
+	wasSetFileStoragePath      bool
+	wasSetDatabaseDsn          bool
+	wasSetEnableHTTPS          bool
+	wasSetTrustedSubnets       bool
+	wasSetBootstrapAddressgRPC bool
 }
 
 type configFileJSON struct {
-	ServerAddress   *string `json:"server_address"`    // аналог переменной окружения SERVER_ADDRESS или флага -a
-	BaseURL         *string `json:"base_url"`          // аналог переменной окружения BASE_URL или флага -b
-	FileStoragePath *string `json:"file_storage_path"` // аналог переменной окружения FILE_STORAGE_PATH или флага -f
-	DatabaseDSN     *string `json:"database_dsn"`      // аналог переменной окружения DATABASE_DSN или флага -d
-	EnableHTTPS     *bool   `json:"enable_https"`      // аналог переменной окружения ENABLE_HTTPS или флага -s
-	TrustedSubnets  *string `json:"trusted_subnet"`    // аналог переменной окружения TRUSTED_SUBNETS или флага -t
+	ServerAddress     *string `json:"server_address"`      // аналог переменной окружения SERVER_ADDRESS или флага -a
+	ServerAddressgRPC *string `json:"server_address_grpc"` // аналог переменной окружения SERVER_ADDRESS_GRPC или флага -ga
+	BaseURL           *string `json:"base_url"`            // аналог переменной окружения BASE_URL или флага -b
+	FileStoragePath   *string `json:"file_storage_path"`   // аналог переменной окружения FILE_STORAGE_PATH или флага -f
+	DatabaseDSN       *string `json:"database_dsn"`        // аналог переменной окружения DATABASE_DSN или флага -d
+	EnableHTTPS       *bool   `json:"enable_https"`        // аналог переменной окружения ENABLE_HTTPS или флага -s
+	TrustedSubnets    *string `json:"trusted_subnet"`      // аналог переменной окружения TRUSTED_SUBNETS или флага -t
 }
 
 // New собирает конфигурацию из флагов командной строки, переменных среды
@@ -75,6 +79,14 @@ func (c *Config) setFromEnv() error {
 		c.wasSetBootstrapNetAddress = ok
 		if ok {
 			c.BootstrapNetAddress = envValue
+		}
+	}
+
+	if !c.wasSetBootstrapAddressgRPC {
+		envValue, ok := os.LookupEnv("SERVER_ADDRESS_GRPC")
+		c.wasSetBootstrapAddressgRPC = ok
+		if ok {
+			c.BootstrapAddressgRPC = envValue
 		}
 	}
 
@@ -129,6 +141,7 @@ func (c *Config) setFromEnv() error {
 // setFromFlags устанавливает данные из переданных флагов или данные по умолчанию
 func (c *Config) setFromFlags() error {
 	a := flag.String("a", ":8080", "Flag responsible for http server start")
+	ga := flag.String("ga", ":8081", "Flag responsible for grpc server start")
 	b := flag.String("b", "http://localhost:8080", "Flag responsible for base addres of shorted url")
 	f := flag.String("f", "", "Path of short url's file")
 	d := flag.String("d", "", "Database connection string")
@@ -138,6 +151,7 @@ func (c *Config) setFromFlags() error {
 	flag.Parse()
 
 	c.BootstrapNetAddress = *a
+	c.BootstrapAddressgRPC = *ga
 	c.BaseURLAddress = *b
 	c.FileStoragePath = *f
 	c.DatabaseDsn = *d
@@ -147,6 +161,7 @@ func (c *Config) setFromFlags() error {
 
 	c.wasSetBaseURLAddress = isFlagPassed("b")
 	c.wasSetBootstrapNetAddress = isFlagPassed("a")
+	c.wasSetBootstrapAddressgRPC = isFlagPassed("ga")
 	c.wasSetDatabaseDsn = isFlagPassed("d")
 	c.wasSetEnableHTTPS = isFlagPassed("s")
 	c.wasSetFileStoragePath = isFlagPassed("f")
@@ -185,6 +200,10 @@ func (c *Config) setFromConfigFile() error {
 	if !c.wasSetBootstrapNetAddress && j.ServerAddress != nil {
 		c.BootstrapNetAddress = *j.ServerAddress
 		c.wasSetBootstrapNetAddress = true
+	}
+	if !c.wasSetBootstrapAddressgRPC && j.ServerAddressgRPC != nil {
+		c.BootstrapAddressgRPC = *j.ServerAddressgRPC
+		c.wasSetBootstrapAddressgRPC = true
 	}
 	if !c.wasSetFileStoragePath && j.FileStoragePath != nil {
 		c.FileStoragePath = *j.FileStoragePath
