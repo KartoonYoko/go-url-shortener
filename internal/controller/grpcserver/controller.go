@@ -10,9 +10,9 @@ import (
 	"syscall"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
+	pb "github.com/KartoonYoko/go-url-shortener/internal/controller/grpcserver/proto"
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	"google.golang.org/grpc"
-	pb "github.com/KartoonYoko/go-url-shortener/internal/controller/grpcserver/proto"
 )
 
 type grpcController struct {
@@ -23,7 +23,7 @@ type grpcController struct {
 
 	pb.UnimplementedStatsServer
 
-	conf    *config.Config
+	conf *config.Config
 }
 
 func NewGRPCController(
@@ -31,7 +31,7 @@ func NewGRPCController(
 	uc useCaseShortener,
 	ucPing useCasePinger,
 	ucAuth useCaseAuther,
-	ucStats useCaseStats) (*grpcController) {
+	ucStats useCaseStats) *grpcController {
 	c := new(grpcController)
 	c.conf = conf
 	c.uc = uc
@@ -51,7 +51,10 @@ func (c *grpcController) Serve(ctx context.Context) error {
 		return fmt.Errorf("failed to start grpc server: %w", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		c.interceptorAuth,
+		c.interceptorRequestTime,
+	))
 	pb.RegisterStatsServer(grpcServer, c)
 
 	sigCh := make(chan os.Signal, 1)

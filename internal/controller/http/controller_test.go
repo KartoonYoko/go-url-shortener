@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/KartoonYoko/go-url-shortener/config"
+	"github.com/KartoonYoko/go-url-shortener/internal/controller/common"
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
 	"github.com/KartoonYoko/go-url-shortener/internal/repository"
 	inmr "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
@@ -500,7 +501,6 @@ func createURL(t *testing.T, url string, httpClient *resty.Client) {
 
 	assert.Equalf(t, http.StatusCreated, resp.StatusCode(),
 		"Несоответствие статус кода ответа ожидаемому в хендлере '%s %s'", req.Method, req.URL)
-
 }
 
 func auth(t *testing.T, jar *cookiejar.Jar) {
@@ -510,7 +510,7 @@ func auth(t *testing.T, jar *cookiejar.Jar) {
 	pURL, err := url.Parse(srv.URL)
 	require.NoError(t, err)
 
-	jwt, err := buildJWTString(userID)
+	jwt, err := common.BuildJWTString(userID)
 	require.NoError(t, err)
 	bearerStr := fmt.Sprintf("Bearer %s", jwt)
 	cookie := createAuthCookie(bearerStr)

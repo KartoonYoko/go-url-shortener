@@ -8,16 +8,9 @@ import (
 	"strings"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/KartoonYoko/go-url-shortener/internal/controller/common"
 	"go.uber.org/zap"
 )
-
-// Claims — структура утверждений, которая включает стандартные утверждения
-// и одно пользовательское — UserID
-type Claims struct {
-	jwt.RegisteredClaims
-	UserID string
-}
 
 // MiddlewareAuthKey тип ключа контекста для middleware аутентификации
 type MiddlewareAuthKey int
@@ -25,9 +18,6 @@ type MiddlewareAuthKey int
 const (
 	keyUserID MiddlewareAuthKey = iota // ключ для ID пользователя
 )
-
-// SecretKey const TOKEN_EXP = time.Hour * 3
-const SecretKey = "supersecretkey"
 
 // Сервис должен:
 //   - Выдавать пользователю симметрично подписанную куку, содержащую уникальный идентификатор пользователя,
@@ -64,7 +54,7 @@ func (c *shortenerController) authJWTCookieMiddleware(next http.Handler) http.Ha
 				cookieValue = arr[1]
 			}
 
-			userID, err = validateAndGetUserID(cookieValue)
+			userID, err = common.ValidateAndGetUserID(cookieValue)
 			// вернуть 401
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -94,7 +84,7 @@ func handleCookieError(ctx context.Context, w http.ResponseWriter, c *shortenerC
 }
 
 func createJWTAndSaveAsCookie(w http.ResponseWriter, userID string) error {
-	jwt, err := buildJWTString(userID)
+	jwt, err := common.BuildJWTString(userID)
 	if err != nil {
 		return err
 	}
@@ -115,42 +105,4 @@ func createAuthCookie(bearerStr string) http.Cookie {
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	}
-}
-
-// buildJWTString создаёт токен и возвращает его в виде строки.
-func buildJWTString(userID string) (string, error) {
-	// создаём новый токен с алгоритмом подписи HS256 и утверждениями — Claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		UserID: userID,
-	})
-
-	// создаём строку токена
-	tokenString, err := token.SignedString([]byte(SecretKey))
-	if err != nil {
-		return "", err
-	}
-
-	// возвращаем строку токена
-	return tokenString, nil
-}
-
-// validateAndGetUserID валидирует токен и получает из него UserID
-func validateAndGetUserID(tokenString string) (string, error) {
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims,
-		func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-			}
-			return []byte(SecretKey), nil
-		})
-	if err != nil {
-		return "", err
-	}
-
-	if !token.Valid {
-		return "", fmt.Errorf("token is not valid")
-	}
-
-	return claims.UserID, nil
 }
