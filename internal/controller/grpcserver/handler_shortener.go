@@ -72,3 +72,41 @@ func (c *grpcController) SetURLsBatch(ctx context.Context, r *pb.SetURLsBatchReq
 
 	return pbResponse, nil
 }
+
+func (c *grpcController) GetUserURLs(ctx context.Context, r *pb.GetUserURLsRequest) (*pb.GetUserURLsResponse, error) {
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	res, err := c.uc.GetUserURLs(ctx, userID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	response := new(pb.GetUserURLsResponse)
+	for _, item := range res {
+		response.Items = append(response.Items, &pb.GetUserURLsResponse_GetUserURLsResponseItem{
+			ShortUrl: item.ShortURL,
+			OriginalUrl: item.OriginalURL,
+		})
+	}
+
+	return response, nil
+}
+
+func (c *grpcController) DeleteUserURLs(ctx context.Context, r *pb.DeleteUserURLsRequest) (*pb.DeleteUserURLsResponse, error) {
+	userID, err := c.getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	urlIDs := make([]string, 0, len(r.Items))
+	for _, item := range r.Items {
+		urlIDs = append(urlIDs, item.UrlId)
+	}
+	if err = c.uc.DeleteURLs(ctx, userID, urlIDs); err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	return new(pb.DeleteUserURLsResponse), nil
+}

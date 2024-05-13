@@ -10,7 +10,7 @@ service ShortenerService {
     rpc GetURL(GetURLRequest) returns (GetURLResponse);
 
     rpc GetUserURLs(GetUserURLsRequest) returns (GetUserURLsResponse);
-    rpc StreamDeleteUserURLs(DeleteUserURLsRequest) returns (stream DeleteUserURLsResponse);
+    rpc DeleteUserURLs(DeleteUserURLsRequest) returns (DeleteUserURLsResponse);
 }
 
 message SetURLRequest {
