@@ -17,7 +17,7 @@ import (
 // Эндпоинт с методом POST и путём /.
 // Сервер принимает в теле запроса строку URL как text/plain
 // и возвращает ответ с кодом 201 и сокращённым URL как text/plain.
-func (c *shortenerController) handlerRootPOST(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) handlerRootPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// - получить из тела запроса строку
@@ -59,7 +59,7 @@ func (c *shortenerController) handlerRootPOST(w http.ResponseWriter, r *http.Req
 
 // Эндпоинт с методом GET и путём /{id}, где id — идентификатор сокращённого URL (например, /EwHXdJfB).
 // В случае успешной обработки запроса сервер возвращает ответ с кодом 307 и оригинальным URL в HTTP-заголовке Location.
-func (c *shortenerController) handlerRootGET(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) handlerRootGET(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodGet {
@@ -84,7 +84,7 @@ func (c *shortenerController) handlerRootGET(w http.ResponseWriter, r *http.Requ
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (c *shortenerController) handlerAPIShortenPOST(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) handlerAPIShortenPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var request model.CreateShortenURLRequest
@@ -140,7 +140,7 @@ func (c *shortenerController) handlerAPIShortenPOST(w http.ResponseWriter, r *ht
 	w.Write([]byte(res))
 }
 
-func (c *shortenerController) handlerAPIShortenBatchPOST(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) handlerAPIShortenBatchPOST(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var request []model.CreateShortenURLBatchItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -182,7 +182,7 @@ func (c *shortenerController) handlerAPIShortenBatchPOST(w http.ResponseWriter, 
 //			]
 //
 // При отсутствии сокращённых пользователем URL хендлер должен отдавать HTTP-статус 204 No Content.
-func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
@@ -210,7 +210,7 @@ func (c *shortenerController) handlerAPIUserURLsGET(w http.ResponseWriter, r *ht
 	w.Write([]byte(responseJSON))
 }
 
-func (c *shortenerController) handlerAPIUserURLsDELETE(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) handlerAPIUserURLsDELETE(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
@@ -233,7 +233,7 @@ func (c *shortenerController) handlerAPIUserURLsDELETE(w http.ResponseWriter, r 
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (c *shortenerController) getUserIDFromContext(ctx context.Context) (string, error) {
+func (c *ShortenerController) getUserIDFromContext(ctx context.Context) (string, error) {
 	ctxUserID := ctx.Value(keyUserID)
 	userID, ok := ctxUserID.(string)
 	if !ok {

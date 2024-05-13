@@ -12,7 +12,7 @@ import (
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-type migrationLogger struct {}
+type migrationLogger struct{}
 
 func (l *migrationLogger) Fatalf(format string, v ...interface{}) {
 	logger.Log.Sugar().Errorf(format, v)
@@ -29,7 +29,7 @@ func migrate(db *sqlx.DB) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("postgres migrate set dialect postgres: %w", err)
 	}
-	
+
 	if err := goose.Up(db.DB, "migrations"); err != nil {
 		return err
 	}

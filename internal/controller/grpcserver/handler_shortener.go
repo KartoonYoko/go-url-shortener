@@ -86,7 +86,7 @@ func (c *grpcController) GetUserURLs(ctx context.Context, r *pb.GetUserURLsReque
 	response := new(pb.GetUserURLsResponse)
 	for _, item := range res {
 		response.Items = append(response.Items, &pb.GetUserURLsResponse_GetUserURLsResponseItem{
-			ShortUrl: item.ShortURL,
+			ShortUrl:    item.ShortURL,
 			OriginalUrl: item.OriginalURL,
 		})
 	}

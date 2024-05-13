@@ -48,7 +48,7 @@ type useCaseStats interface {
 	GetStats(ctx context.Context) (*modelStats.StatsResponse, error)
 }
 
-type shortenerController struct {
+type ShortenerController struct {
 	uc      useCaseShortener
 	ucPing  useCasePinger
 	ucAuth  useCaseAuther
@@ -63,8 +63,8 @@ func NewShortenerController(
 	ucPing useCasePinger,
 	ucAuth useCaseAuther,
 	ucStats useCaseStats,
-	conf *config.Config) *shortenerController {
-	c := &shortenerController{
+	conf *config.Config) *ShortenerController {
+	c := &ShortenerController{
 		uc:      uc,
 		ucAuth:  ucAuth,
 		ucPing:  ucPing,
@@ -90,13 +90,13 @@ func NewShortenerController(
 	return c
 }
 
-func routeRoot(r *chi.Mux, c *shortenerController) {
+func routeRoot(r *chi.Mux, c *ShortenerController) {
 	r.Get("/favicon.ico", c.handlerFaviconGET)
 	r.Get("/{id}", c.handlerRootGET)
 	r.Post("/", c.handlerRootPOST)
 }
 
-func routeAPI(r *chi.Mux, c *shortenerController) {
+func routeAPI(r *chi.Mux, c *ShortenerController) {
 	apiRouter := chi.NewRouter()
 
 	apiRouter.Group(func(r chi.Router) {
@@ -118,7 +118,7 @@ func routeAPI(r *chi.Mux, c *shortenerController) {
 	r.Mount("/api", apiRouter)
 }
 
-func routePing(r *chi.Mux, c *shortenerController) {
+func routePing(r *chi.Mux, c *ShortenerController) {
 	pingRouter := chi.NewRouter()
 	pingRouter.Get("/", c.ping)
 
@@ -126,7 +126,7 @@ func routePing(r *chi.Mux, c *shortenerController) {
 }
 
 // Serve запускает http сервер
-func (c *shortenerController) Serve(ctx context.Context) error {
+func (c *ShortenerController) Serve(ctx context.Context) error {
 	server := &http.Server{Addr: c.conf.BootstrapNetAddress, Handler: c.router}
 
 	// Server run context

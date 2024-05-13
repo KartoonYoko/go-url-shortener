@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (c *shortenerController) ping(w http.ResponseWriter, r *http.Request) {
+func (c *ShortenerController) ping(w http.ResponseWriter, r *http.Request) {
 	ctx := context.TODO()
 	err := c.ucPing.Ping(ctx)
 	if err != nil {

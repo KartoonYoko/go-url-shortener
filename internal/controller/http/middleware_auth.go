@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	"github.com/KartoonYoko/go-url-shortener/internal/controller/common"
+	"github.com/KartoonYoko/go-url-shortener/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -23,7 +23,7 @@ const (
 //   - Выдавать пользователю симметрично подписанную куку, содержащую уникальный идентификатор пользователя,
 //     если такой куки не существует или она не проходит проверку подлинности.
 //   - Если кука не содержит ID пользователя, хендлер должен возвращать HTTP-статус 401 Unauthorized.
-func (c *shortenerController) authJWTCookieMiddleware(next http.Handler) http.Handler {
+func (c *ShortenerController) authJWTCookieMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var userID string
 		ctx := r.Context()
@@ -70,7 +70,7 @@ func (c *shortenerController) authJWTCookieMiddleware(next http.Handler) http.Ha
 }
 
 // handleCookieError генерирует новый userID и записывает его в куки
-func handleCookieError(ctx context.Context, w http.ResponseWriter, c *shortenerController) (string, error) {
+func handleCookieError(ctx context.Context, w http.ResponseWriter, c *ShortenerController) (string, error) {
 	userID, err := c.ucAuth.GetNewUserID(ctx)
 	if err != nil {
 		return "", err
