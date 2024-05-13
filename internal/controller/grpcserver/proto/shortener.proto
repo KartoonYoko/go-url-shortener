@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/KartoonYoko/go-url-shortener/internal/controller/grpcserver/proto";
+
+service ShortenerService {
+    rpc SetURL(SetURLRequest) returns (SetURLResponse);
+    rpc SetURLsBatch(SetURLsBatchRequest) returns (SetURLsBatchResponse);
+    rpc GetURL(GetURLRequest) returns (GetURLResponse);
+
+    rpc GetUserURLs(GetUserURLsRequest) returns (GetUserURLsResponse);
+    rpc StreamDeleteUserURLs(DeleteUserURLsRequest) returns (stream DeleteUserURLsResponse);
+}
+
+message SetURLRequest {
+    string url = 1;
+}
+
+message SetURLResponse {
+    string short_url = 1;
+}
+
+message GetURLRequest {
+    string id = 1;
+}
+
+message GetURLResponse {
+    string url = 1;
+}
+
+message SetURLsBatchRequest {
+    message SetURLsBatchRequestItem {
+        string correlation_id = 1;
+        string original_url = 2;
+    }
+
+    repeated SetURLsBatchRequestItem items = 1;
+}
+
+message SetURLsBatchResponse {
+    message SetURLsBatchResponseItem {
+        string correlation_id = 1;
+        string short_url = 2;
+    }
+
+    repeated SetURLsBatchResponseItem items = 1;
+}
+
+message GetUserURLsRequest {}
+
+message GetUserURLsResponse {
+    message GetUserURLsResponseItem {
+        string short_url = 1;
+        string original_url = 2;
+    }
+
+    repeated GetUserURLsResponseItem items = 1;
+}
+
+message DeleteUserURLsRequest {
+    message DeleteUserURLsRequestItem {
+        string url_id = 1;
+    }
+
+    repeated DeleteUserURLsRequestItem items = 1;
+}
+
+message DeleteUserURLsResponse { }

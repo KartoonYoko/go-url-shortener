@@ -73,7 +73,7 @@ func (c *grpcController) setAuthorizationMetadata(ctx context.Context) (string, 
 	return userID, nil
 }
 
-// interceptorRequest
+// interceptorRequestTime замеряет время запроса
 func (c *grpcController) interceptorRequestTime(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	start := time.Now()
 	res, err := handler(ctx, req)

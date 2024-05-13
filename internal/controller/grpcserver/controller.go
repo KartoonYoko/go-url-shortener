@@ -21,7 +21,9 @@ type grpcController struct {
 	ucAuth  useCaseAuther
 	ucStats useCaseStats
 
-	pb.UnimplementedStatsServer
+	pb.PingServiceServer
+	pb.StatsServiceServer
+	pb.ShortenerServiceServer
 
 	conf *config.Config
 }
@@ -52,10 +54,12 @@ func (c *grpcController) Serve(ctx context.Context) error {
 	}
 
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		c.interceptorAuth,
 		c.interceptorRequestTime,
+		c.interceptorAuth,
 	))
-	pb.RegisterStatsServer(grpcServer, c)
+	pb.RegisterPingServiceServer(grpcServer, c)
+	pb.RegisterStatsServiceServer(grpcServer, c)
+	pb.RegisterShortenerServiceServer(grpcServer, c)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

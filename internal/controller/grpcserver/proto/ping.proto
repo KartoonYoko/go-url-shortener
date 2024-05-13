@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/KartoonYoko/go-url-shortener/internal/controller/grpcserver/proto";
+
+service PingService {
+    rpc Ping(PingRequest) returns (PingResponse);
+}
+
+message PingRequest {}
+
+message PingResponse {}

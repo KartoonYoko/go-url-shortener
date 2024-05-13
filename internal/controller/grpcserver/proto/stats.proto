@@ -4,7 +4,7 @@ package proto;
 
 option go_package = "github.com/KartoonYoko/go-url-shortener/internal/controller/grpcserver/proto";
 
-service Stats {
+service StatsService {
     rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
 }
 
