@@ -7,7 +7,7 @@ import (
 	modelStats "github.com/KartoonYoko/go-url-shortener/internal/model/stats"
 )
 
-type useCaseShortener interface {
+type UseCaseShortener interface {
 	GetURLByID(ctx context.Context, urlID string) (string, error)
 	SaveURL(ctx context.Context, url string, userID string) (string, error)
 	SaveURLsBatch(ctx context.Context,
@@ -16,7 +16,7 @@ type useCaseShortener interface {
 	DeleteURLs(ctx context.Context, userID string, urlsIDs []string) error
 }
 
-type useCasePinger interface {
+type UseCasePinger interface {
 	Ping(ctx context.Context) error
 }
 
@@ -24,6 +24,6 @@ type useCaseAuther interface {
 	GetNewUserID(ctx context.Context) (string, error)
 }
 
-type useCaseStats interface {
+type UseCaseStats interface {
 	GetStats(ctx context.Context) (*modelStats.StatsResponse, error)
 }

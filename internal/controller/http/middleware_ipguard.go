@@ -9,7 +9,7 @@ import (
 )
 
 // guardIPMiddleware запрещает/разрешает доступ на основе переданной подсети
-func (c *ShortenerController) guardIPMiddleware(next http.Handler) http.Handler {
+func (c *shortenerController) guardIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ipStr := r.Header.Get("X-Real-IP")
 		// если нет заголовка - запрещаем доступ

@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (c *ShortenerController) handlerStatsGET(w http.ResponseWriter, r *http.Request) {
+func (c *shortenerController) handlerStatsGET(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	st, err := c.ucStats.GetStats(ctx)

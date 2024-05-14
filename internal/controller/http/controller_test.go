@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	controller *ShortenerController
+	controller *shortenerController
 	srv        *httptest.Server
 	ucMock     *useCaseMock
 )
@@ -45,7 +45,7 @@ func TearDownTest(t *testing.T) {
 
 // createTestMock собирает контроллер
 // Пока непонятно как правильно инициализировать данные, поэтому пока так.
-func createTestMock() *ShortenerController {
+func createTestMock() *shortenerController {
 	ucMock = &useCaseMock{
 		repo:           *inmr.NewInMemoryRepo(),
 		baseAddressURL: "http://127.0.0.1:8080", // задаём любой URL, который попадёт под регулярку в тестах

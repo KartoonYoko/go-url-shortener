@@ -16,10 +16,10 @@ import (
 )
 
 type grpcController struct {
-	uc      useCaseShortener
-	ucPing  useCasePinger
+	uc      UseCaseShortener
+	ucPing  UseCasePinger
 	ucAuth  useCaseAuther
-	ucStats useCaseStats
+	ucStats UseCaseStats
 
 	pb.PingServiceServer
 	pb.StatsServiceServer
@@ -30,10 +30,10 @@ type grpcController struct {
 
 func NewGRPCController(
 	conf *config.Config,
-	uc useCaseShortener,
-	ucPing useCasePinger,
+	uc UseCaseShortener,
+	ucPing UseCasePinger,
 	ucAuth useCaseAuther,
-	ucStats useCaseStats) *grpcController {
+	ucStats UseCaseStats) *grpcController {
 	c := new(grpcController)
 	c.conf = conf
 	c.uc = uc
