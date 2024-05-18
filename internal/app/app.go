@@ -119,13 +119,12 @@ func initRepo(ctx context.Context, conf config.Config) (shortenerRepoCloser, err
 }
 
 func startServer(ctx context.Context, httpController serverHandler, grpcController serverHandler) {
-	var err error
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err = httpController.Serve(ctx); err != nil {
+		if err := httpController.Serve(ctx); err != nil {
 			logger.Log.Error("http serve error: %s", zap.Error(err))
 		}
 	}()
@@ -133,7 +132,7 @@ func startServer(ctx context.Context, httpController serverHandler, grpcControll
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err = grpcController.Serve(ctx); err != nil {
+		if err := grpcController.Serve(ctx); err != nil {
 			logger.Log.Error("grpc serve error: %s", zap.Error(err))
 		}
 	}()

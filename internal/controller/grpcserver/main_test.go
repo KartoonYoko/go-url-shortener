@@ -14,7 +14,6 @@ import (
 var (
 	controller           *grpcController
 	bootstrapAddressgRPC string
-	// ucMock     *useCaseMock
 )
 
 // auther - это реализация useCaseAuther, которая позволяет вызывать GetNewUserID сколь угодно раз
@@ -29,11 +28,6 @@ func TestMain(m *testing.M) {
 	bootstrapAddressgRPC = ":8080"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	// if err := logger.Initialize("Info"); err != nil {
-	// 	log.Fatal(fmt.Errorf("logger init error: %w", err))
-	// }
-	// defer logger.Log.Sync()
 
 	go func() {
 		fmt.Println("start server")
