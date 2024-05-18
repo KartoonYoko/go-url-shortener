@@ -14,11 +14,13 @@ import (
 func (c *grpcController) SetURL(ctx context.Context, r *pb.SetURLRequest) (*pb.SetURLResponse, error) {
 	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
+		logger.Log.Error("can not get user ID: ", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "internal error")
 	}
 
 	shortURL, err := c.uc.SaveURL(ctx, r.Url, userID)
 	if err != nil {
+		logger.Log.Error("can not save url: ", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "internal error")
 	}
 
@@ -31,6 +33,7 @@ func (c *grpcController) SetURL(ctx context.Context, r *pb.SetURLRequest) (*pb.S
 func (c *grpcController) GetURL(ctx context.Context, r *pb.GetURLRequest) (*pb.GetURLResponse, error) {
 	shortURL, err := c.uc.GetURLByID(ctx, r.Id)
 	if err != nil {
+		logger.Log.Error("can not get user ID: ", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "internal error")
 	}
 
@@ -76,10 +79,12 @@ func (c *grpcController) SetURLsBatch(ctx context.Context, r *pb.SetURLsBatchReq
 func (c *grpcController) GetUserURLs(ctx context.Context, r *pb.GetUserURLsRequest) (*pb.GetUserURLsResponse, error) {
 	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
+		logger.Log.Error("can not get user ID: ", zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	res, err := c.uc.GetUserURLs(ctx, userID)
 	if err != nil {
+		logger.Log.Error("can not get user urls: ", zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -97,6 +102,7 @@ func (c *grpcController) GetUserURLs(ctx context.Context, r *pb.GetUserURLsReque
 func (c *grpcController) DeleteUserURLs(ctx context.Context, r *pb.DeleteUserURLsRequest) (*pb.DeleteUserURLsResponse, error) {
 	userID, err := c.getUserIDFromContext(ctx)
 	if err != nil {
+		logger.Log.Error("can not get user ID: ", zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -105,6 +111,7 @@ func (c *grpcController) DeleteUserURLs(ctx context.Context, r *pb.DeleteUserURL
 		urlIDs = append(urlIDs, item.UrlId)
 	}
 	if err = c.uc.DeleteURLs(ctx, userID, urlIDs); err != nil {
+		logger.Log.Error("can not delete user urls: ", zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
