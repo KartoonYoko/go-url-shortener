@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	modelStats "github.com/KartoonYoko/go-url-shortener/internal/model/stats"
 	inmr "github.com/KartoonYoko/go-url-shortener/internal/repository/inmemoryrepo"
 )
 
@@ -180,4 +181,9 @@ func (s *fileRepo) saveToFile(r recordShorURL) error {
 
 	_, err = s.file.Write(data)
 	return err
+}
+
+// GetStats возвращает статистику
+func (s *fileRepo) GetStats(ctx context.Context) (*modelStats.StatsResponse, error) {
+	return s.repo.GetStats(ctx)
 }

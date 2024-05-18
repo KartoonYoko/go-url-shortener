@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/KartoonYoko/go-url-shortener/internal/logger"
+	"go.uber.org/zap"
 )
 
 type (
@@ -42,11 +43,11 @@ func logRequestTimeMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		duration := time.Since(start)
 
-		logger.Log.Sugar().Infoln(
+		logger.Log.Info(
 			"request_log",
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"duration", duration,
+			zap.String("uri", r.RequestURI),
+			zap.String("method", r.Method),
+			zap.String("duration", duration.String()),
 		)
 	})
 }
@@ -64,10 +65,10 @@ func logResponseInfoMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(&lw, r)
 
-		logger.Log.Sugar().Infoln(
+		logger.Log.Info(
 			"response_log",
-			"status_code", responseData.status,
-			"size", responseData.size,
+			zap.Int("status_code", responseData.status),
+			zap.Int("size", responseData.size),
 		)
 	})
 }

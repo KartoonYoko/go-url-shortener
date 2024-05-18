@@ -11,6 +11,7 @@ import (
 	"time"
 
 	model "github.com/KartoonYoko/go-url-shortener/internal/model/shortener"
+	modelStats "github.com/KartoonYoko/go-url-shortener/internal/model/stats"
 	repoCommon "github.com/KartoonYoko/go-url-shortener/internal/repository"
 	"github.com/google/uuid"
 )
@@ -150,4 +151,20 @@ func (s *InMemoryRepo) Clear() error {
 	}
 
 	return nil
+}
+
+// GetStats возвращает статистику
+func (s *InMemoryRepo) GetStats(ctx context.Context) (*modelStats.StatsResponse, error) {
+	users := make(map[string]struct{})
+	for _, v := range s.storage {
+		for k := range v.users {
+			users[k] = struct{}{}
+		}
+	}
+
+	response := new(modelStats.StatsResponse)
+	response.URLs = len(s.storage)
+	response.Users = len(users)
+
+	return response, nil
 }

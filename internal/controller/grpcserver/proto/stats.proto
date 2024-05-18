@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/KartoonYoko/go-url-shortener/internal/controller/grpcserver/proto";
+
+service StatsService {
+    rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+    int64 urls  = 1;
+    int64 users = 2;
+}
